@@ -10,6 +10,7 @@ import '../../core/providers.dart';
 import '../../widgets/ui.dart';
 import '../common/settings_parts.dart';
 import '../common/shell.dart';
+import '../updates/changelog.dart' show bizhubVersion;
 import '../updates/updates_page.dart' show updatesText;
 
 // "More" of the owner bottom bar (the web's more sheet)
@@ -48,7 +49,7 @@ class OwnerMorePage extends ConsumerWidget {
             MenuRow(icon: LucideIcons.coins, label: t('coin.title'), onTap: () => context.push('/o/coins')),
             MenuRow(icon: LucideIcons.userRound, label: t('messages.navAccount'), sub: t('messages.accountLink'), onTap: () => context.push('/account')),
             MenuRow(icon: LucideIcons.messageCircle, label: t('messages.navSupport'), onTap: () => context.push('/o/support')),
-            MenuRow(icon: LucideIcons.history, label: updatesText(t.lang, 'title'), onTap: () => context.push('/updates')),
+            MenuRow(icon: LucideIcons.history, label: updatesText(t.lang, 'title'), sub: 'v$bizhubVersion', onTap: () => context.push('/updates')),
           ],
         ),
         const SizedBox(height: 18),
