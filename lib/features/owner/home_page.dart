@@ -18,7 +18,7 @@ import '../common/open_business.dart';
 import '../team/team_text.dart' show teamText;
 import 'data.dart';
 
-const bizTypes = ['namecard', 'menu_qr', 'flipbook', 'qr_gen', 'website', 'restaurant', 'attendance', 'guest_house', 'mart', 'debt_book', 'stamp_card', 'event', 'digital_note'];
+const bizTypes = ['namecard', 'menu_qr', 'flipbook', 'qr_gen', 'website', 'restaurant', 'attendance', 'guest_house', 'mart', 'debt_book', 'stamp_card', 'event', 'digital_note', 'tg_store'];
 num? _pct(num now, num before) => before > 0 ? ((now - before) / before * 100).round() : null;
 
 // Owner home = the web dashboard (dashboard/client/DashboardPage.jsx), top to bottom.

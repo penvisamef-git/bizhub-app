@@ -1,0 +1,21 @@
+{
+ "success": true,
+ "data": {
+  "connected": true,
+  "chat_name": "Sokha riders",
+  "send_on": "accepted",
+  "waiting": 1,
+  "riders": [
+   {
+    "tg_id": "7001",
+    "name": "Piseth",
+    "username": "piseth_rider",
+    "taken": 1,
+    "delivered": 0,
+    "fees": 0,
+    "minutes": null,
+    "last": "2026-10-26T08:50:16.262Z"
+   }
+  ]
+ }
+}

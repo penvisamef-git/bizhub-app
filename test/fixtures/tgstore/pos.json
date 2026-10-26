@@ -1,0 +1,35 @@
+{
+ "success": true,
+ "data": {
+  "staff": [
+   {
+    "_id": "6adf14482f6cacc8994f6b0b",
+    "name": "Srey",
+    "role": "staff",
+    "active": true,
+    "created_date": "2026-10-26T08:50:16.411Z"
+   },
+   {
+    "_id": "6adf14482f6cacc8994f6b0f",
+    "name": "Dara",
+    "role": "manager",
+    "active": true,
+    "created_date": "2026-10-26T08:50:16.427Z"
+   }
+  ],
+  "devices": [],
+  "limits": {
+   "devices": 1,
+   "staff": 2
+  },
+  "free": {
+   "devices": 1,
+   "staff": 2
+  },
+  "more": {
+   "devices": 10,
+   "staff": 50
+  },
+  "url": "https://bizhub-cambodia.web.app/pos/tg-store"
+ }
+}

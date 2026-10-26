@@ -75,6 +75,7 @@ const typeIcons = <String, IconData>{
   'stamp_card': LucideIcons.stamp,
   'event': LucideIcons.ticket,
   'digital_note': LucideIcons.stickyNote,
+  'tg_store': LucideIcons.send,
   'restaurant': LucideIcons.utensilsCrossed,
   'attendance': LucideIcons.fingerprint,
   'guest_house': LucideIcons.bedDouble,
@@ -95,6 +96,7 @@ const rowIcons = <String, IconData>{
   'stamp_card': LucideIcons.stamp,
   'event': LucideIcons.ticket,
   'digital_note': LucideIcons.stickyNote,
+  'tg_store': LucideIcons.send,
 };
 
 // coloured square icon, same gradient as the homepage service icons

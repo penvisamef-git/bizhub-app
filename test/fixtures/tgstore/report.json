@@ -1,0 +1,218 @@
+{
+ "success": true,
+ "data": {
+  "days": 30,
+  "currency": "USD",
+  "totals": {
+   "orders": 4,
+   "sales": 26.27,
+   "avg": 6.57,
+   "cancelled": 1,
+   "discount": 0.53
+  },
+  "by_day": [
+   {
+    "day": "2026-09-27",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-09-28",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-09-29",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-09-30",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-01",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-02",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-03",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-04",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-05",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-06",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-07",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-08",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-09",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-10",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-11",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-12",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-13",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-14",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-15",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-16",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-17",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-18",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-19",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-20",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-21",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-22",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-23",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-24",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-25",
+    "orders": 0,
+    "sales": 0
+   },
+   {
+    "day": "2026-10-26",
+    "orders": 4,
+    "sales": 26.27
+   }
+  ],
+  "best": [
+   {
+    "name": "Americano",
+    "qty": 6,
+    "sales": 10.5
+   },
+   {
+    "name": "Iced Latte",
+    "qty": 4,
+    "sales": 12
+   },
+   {
+    "name": "Butter Croissant",
+    "qty": 1,
+    "sales": 1.8
+   }
+  ],
+  "hours": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   4,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "modes": {
+   "delivery": 2,
+   "pickup": 2,
+   "dine_in": 0
+  },
+  "pay": {
+   "khqr": 0,
+   "cash": 4
+  }
+ }
+}

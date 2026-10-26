@@ -1,0 +1,92 @@
+{
+ "success": true,
+ "data": [
+  {
+   "_id": "6adf144899875337079abf9e",
+   "name": "Sreyleak",
+   "phone": "010555666",
+   "username": "",
+   "address": "",
+   "telegram": false,
+   "can_message": false,
+   "orders": 0,
+   "placed": 1,
+   "spent": 0,
+   "last_order_at": "2026-10-26T08:50:16.095Z",
+   "note": "",
+   "created_date": "2026-10-26T08:50:16.095Z"
+  },
+  {
+   "_id": "6adf144899875337079abf90",
+   "name": "Dara",
+   "phone": "077333444",
+   "username": "dara88",
+   "address": "",
+   "telegram": true,
+   "can_message": true,
+   "orders": 0,
+   "placed": 1,
+   "spent": 0,
+   "last_order_at": "2026-10-26T08:50:16.059Z",
+   "note": "",
+   "created_date": "2026-10-26T08:50:16.060Z"
+  },
+  {
+   "_id": "6adf144799875337079abf83",
+   "name": "Kim Sok",
+   "phone": "098765432",
+   "username": "kimsok",
+   "address": "Toul Kork market, stall 4",
+   "telegram": true,
+   "can_message": true,
+   "orders": 0,
+   "placed": 1,
+   "spent": 0,
+   "last_order_at": "2026-10-26T08:50:15.991Z",
+   "note": "",
+   "created_date": "2026-10-26T08:50:15.992Z"
+  },
+  {
+   "_id": "6adf144799875337079abf76",
+   "name": "Bopha",
+   "phone": "011222333",
+   "username": "",
+   "address": "",
+   "telegram": false,
+   "can_message": false,
+   "orders": 1,
+   "placed": 1,
+   "spent": 4.72,
+   "last_order_at": "2026-10-26T08:50:15.904Z",
+   "note": "",
+   "created_date": "2026-10-26T08:50:15.894Z"
+  },
+  {
+   "_id": "6adf144799875337079abf67",
+   "name": "Vanna Chan",
+   "phone": "012111222",
+   "username": "vanna_pp",
+   "address": "St 63, house 12",
+   "telegram": true,
+   "can_message": true,
+   "orders": 0,
+   "placed": 1,
+   "spent": 0,
+   "last_order_at": "2026-10-26T08:50:15.836Z",
+   "note": "",
+   "created_date": "2026-10-26T08:50:15.837Z"
+  }
+ ],
+ "pagination": {
+  "page": 1,
+  "limit": 30,
+  "total": 5
+ },
+ "stats": {
+  "all": 5,
+  "telegram": 3,
+  "repeat": 0,
+  "new_month": 5,
+  "spent": 4.72
+ }
+}

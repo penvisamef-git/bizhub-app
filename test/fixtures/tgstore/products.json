@@ -1,0 +1,82 @@
+{
+ "success": true,
+ "data": [
+  {
+   "_id": "6adf14362f6cacc8994f6a99",
+   "category_id": "6adf14342f6cacc8994f6a97",
+   "name": "Iced Latte",
+   "name_km": "ឡាតេទឹកកក",
+   "about": "",
+   "price": 2.5,
+   "photo": "",
+   "options": [
+    {
+     "name": "Size",
+     "multi": false,
+     "required": true,
+     "choices": [
+      {
+       "name": "Regular",
+       "price": 0
+      },
+      {
+       "name": "Large",
+       "price": 0.5
+      }
+     ]
+    },
+    {
+     "name": "Extras",
+     "multi": true,
+     "required": false,
+     "choices": [
+      {
+       "name": "Extra shot",
+       "price": 0.5
+      },
+      {
+       "name": "Oat milk",
+       "price": 0.3
+      },
+      {
+       "name": "Less sugar",
+       "price": 0
+      }
+     ]
+    }
+   ],
+   "stock": null,
+   "sold_out": false,
+   "hidden": false,
+   "sort": 0
+  },
+  {
+   "_id": "6adf14402f6cacc8994f6a9a",
+   "category_id": "6adf14342f6cacc8994f6a97",
+   "name": "Americano",
+   "name_km": "",
+   "about": "",
+   "price": 1.75,
+   "photo": "",
+   "options": [],
+   "stock": null,
+   "sold_out": false,
+   "hidden": false,
+   "sort": 1
+  },
+  {
+   "_id": "6adf14422f6cacc8994f6a9b",
+   "category_id": "6adf14352f6cacc8994f6a98",
+   "name": "Butter Croissant",
+   "name_km": "",
+   "about": "",
+   "price": 1.8,
+   "photo": "",
+   "options": [],
+   "stock": 29,
+   "sold_out": false,
+   "hidden": false,
+   "sort": 2
+  }
+ ]
+}

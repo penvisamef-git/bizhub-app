@@ -35,6 +35,7 @@ const _names = {
   'stamp_card': 'cStamp',
   'event': 'cEvent',
   'digital_note': 'cNote',
+  'tg_store': 'cTgStore',
 };
 
 class AdminHomepagePage extends ConsumerStatefulWidget {

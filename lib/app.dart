@@ -32,6 +32,7 @@ import 'features/common/web_page.dart';
 import 'features/attendance/at_page.dart';
 import 'features/debt/dk_page.dart';
 import 'features/note/nt_page.dart';
+import 'features/tgstore/ts_page.dart';
 import 'features/stamp/sc_page.dart';
 import 'features/event/ev_page.dart';
 import 'features/qrgen/qg_page.dart';
@@ -202,6 +203,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/biz/event/:id',
         builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: EventPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
+      ),
+      GoRoute(
+        path: '/biz/tgstore/:id',
+        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: TgStorePage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
       ),
       GoRoute(
         path: '/biz/stamp/:id',

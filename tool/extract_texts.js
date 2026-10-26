@@ -145,6 +145,9 @@ const out = {
   // Event Tickets: the owner's words + the public pages' words (event page, order, ticket, certificate)
   ev: pick("dashboard/client/event/text.js", "const TEXT ="),
   evp: pick("evpub/text.js", "const TEXT ="),
+  // Telegram Store (v2.0): the owner's words + the public store / order pages' words
+  ts: pick("dashboard/client/tgstore/text.js", "const TEXT ="),
+  tsp: pick("tgstore/text.js", "const TEXT ="),
   // attendance looks: name + description per language
   atlook: (() => {
     const f = "attend/looks.js";

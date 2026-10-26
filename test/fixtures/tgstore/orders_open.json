@@ -1,0 +1,253 @@
+{
+ "success": true,
+ "data": [
+  {
+   "_id": "6adf14472f6cacc8994f6ac9",
+   "no": 1,
+   "mode": "delivery",
+   "table": "",
+   "address": "St 63, house 12",
+   "note": "Ring the bell please",
+   "customer": {
+    "tg_id": "600001",
+    "username": "vanna_pp",
+    "name": "Vanna Chan",
+    "phone": "012111222"
+   },
+   "items": [
+    {
+     "product_id": "6adf14362f6cacc8994f6a99",
+     "name": "Iced Latte",
+     "price": 3,
+     "qty": 2,
+     "options": [
+      {
+       "group": "Size",
+       "choice": "Large",
+       "price": 0.5
+      }
+     ],
+     "note": "",
+     "total": 6
+    },
+    {
+     "product_id": "6adf14402f6cacc8994f6a9a",
+     "name": "Americano",
+     "price": 1.75,
+     "qty": 1,
+     "options": [],
+     "note": "",
+     "total": 1.75
+    }
+   ],
+   "subtotal": 7.75,
+   "discount": 0,
+   "promo": "",
+   "fee": 1,
+   "total": 8.75,
+   "currency": "USD",
+   "pay": {
+    "method": "cash",
+    "status": "unpaid",
+    "proof": "",
+    "paid_at": null,
+    "custom": null
+   },
+   "status": "accepted",
+   "eta_min": 20,
+   "reason": "",
+   "timeline": [
+    {
+     "status": "new",
+     "at": "2026-10-26T08:50:15.841Z",
+     "by": "Vanna Chan"
+    },
+    {
+     "status": "accepted",
+     "at": "2026-10-26T08:50:16.141Z",
+     "by": "Sokha"
+    }
+   ],
+   "via": "telegram",
+   "zone": {
+    "name": "Daun Penh",
+    "km": null,
+    "lat": 11.565,
+    "lng": 104.92
+   },
+   "rider": null,
+   "riders_sent": true,
+   "from_remind": false,
+   "created_date": "2026-10-26T08:50:15.845Z"
+  },
+  {
+   "_id": "6adf14482f6cacc8994f6ad1",
+   "no": 3,
+   "mode": "delivery",
+   "table": "",
+   "address": "Toul Kork market, stall 4",
+   "note": "",
+   "customer": {
+    "tg_id": "600002",
+    "username": "kimsok",
+    "name": "Kim Sok",
+    "phone": "098765432"
+   },
+   "items": [
+    {
+     "product_id": "6adf14402f6cacc8994f6a9a",
+     "name": "Americano",
+     "price": 1.75,
+     "qty": 2,
+     "options": [],
+     "note": "",
+     "total": 3.5
+    },
+    {
+     "product_id": "6adf14422f6cacc8994f6a9b",
+     "name": "Butter Croissant",
+     "price": 1.8,
+     "qty": 1,
+     "options": [],
+     "note": "",
+     "total": 1.8
+    }
+   ],
+   "subtotal": 5.3,
+   "discount": 0,
+   "promo": "",
+   "fee": 1.5,
+   "total": 6.8,
+   "currency": "USD",
+   "pay": {
+    "method": "cash",
+    "status": "unpaid",
+    "proof": "",
+    "paid_at": null,
+    "custom": null
+   },
+   "status": "on_way",
+   "eta_min": 0,
+   "reason": "",
+   "timeline": [
+    {
+     "status": "new",
+     "at": "2026-10-26T08:50:16.000Z",
+     "by": "Kim Sok"
+    },
+    {
+     "status": "accepted",
+     "at": "2026-10-26T08:50:16.241Z",
+     "by": "Sokha"
+    },
+    {
+     "status": "rider",
+     "at": "2026-10-26T08:50:16.262Z",
+     "by": "Piseth"
+    },
+    {
+     "status": "on_way",
+     "at": "2026-10-26T08:50:16.280Z",
+     "by": "Piseth"
+    }
+   ],
+   "via": "telegram",
+   "zone": {
+    "name": "Toul Kork",
+    "km": null,
+    "lat": null,
+    "lng": null
+   },
+   "rider": {
+    "name": "Piseth",
+    "username": "piseth_rider",
+    "taken_at": "2026-10-26T08:50:16.262Z",
+    "picked_at": "2026-10-26T08:50:16.279Z",
+    "delivered_at": null
+   },
+   "riders_sent": true,
+   "from_remind": false,
+   "created_date": "2026-10-26T08:50:16.004Z"
+  },
+  {
+   "_id": "6adf14482f6cacc8994f6ad5",
+   "no": 4,
+   "mode": "pickup",
+   "table": "",
+   "address": "",
+   "note": "",
+   "customer": {
+    "tg_id": "600003",
+    "username": "dara88",
+    "name": "Dara",
+    "phone": "077333444"
+   },
+   "items": [
+    {
+     "product_id": "6adf14362f6cacc8994f6a99",
+     "name": "Iced Latte",
+     "price": 3,
+     "qty": 2,
+     "options": [
+      {
+       "group": "Size",
+       "choice": "Large",
+       "price": 0.5
+      }
+     ],
+     "note": "",
+     "total": 6
+    }
+   ],
+   "subtotal": 6,
+   "discount": 0,
+   "promo": "",
+   "fee": 0,
+   "total": 6,
+   "currency": "USD",
+   "pay": {
+    "method": "cash",
+    "status": "unpaid",
+    "proof": "",
+    "paid_at": null,
+    "custom": null
+   },
+   "status": "new",
+   "eta_min": 0,
+   "reason": "",
+   "timeline": [
+    {
+     "status": "new",
+     "at": "2026-10-26T08:50:16.067Z",
+     "by": "Dara"
+    }
+   ],
+   "via": "telegram",
+   "zone": null,
+   "rider": null,
+   "riders_sent": false,
+   "from_remind": false,
+   "created_date": "2026-10-26T08:50:16.072Z"
+  }
+ ],
+ "pagination": {
+  "page": 1,
+  "limit": 60,
+  "total": 3
+ },
+ "sum": 21.55,
+ "history": {
+  "days": 60,
+  "all": true,
+  "from": null,
+  "hidden": 0
+ },
+ "counts": {
+  "open": 3,
+  "new": 1,
+  "today_orders": 4,
+  "today_total": 26.27,
+  "products": 3,
+  "customers": 5
+ }
+}

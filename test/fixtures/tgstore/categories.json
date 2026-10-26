@@ -1,0 +1,17 @@
+{
+ "success": true,
+ "data": [
+  {
+   "_id": "6adf14342f6cacc8994f6a97",
+   "name": "Coffee",
+   "name_km": "",
+   "sort": 0
+  },
+  {
+   "_id": "6adf14352f6cacc8994f6a98",
+   "name": "Bakery",
+   "name_km": "",
+   "sort": 1
+  }
+ ]
+}

@@ -1,0 +1,27 @@
+{
+ "success": true,
+ "data": [
+  {
+   "_id": "6adf14472f6cacc8994f6ab6",
+   "code": "FREE1",
+   "kind": "amount",
+   "value": 1,
+   "min_order": 0,
+   "ends_at": null,
+   "max_uses": 0,
+   "used": 0,
+   "on": true
+  },
+  {
+   "_id": "6adf14472f6cacc8994f6ab2",
+   "code": "SAVE10",
+   "kind": "percent",
+   "value": 10,
+   "min_order": 5,
+   "ends_at": null,
+   "max_uses": 100,
+   "used": 1,
+   "on": true
+  }
+ ]
+}

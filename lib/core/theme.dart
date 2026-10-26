@@ -165,6 +165,7 @@ class Brand {
     'stamp_card': [Color(0xFF92400E), Color(0xFFF59E0B)],
     'event': [Color(0xFF9D174D), Color(0xFFF0662B)],
     'digital_note': [Color(0xFFCA8A04), Color(0xFFF59E0B)],
+    'tg_store': [Color(0xFF0B77C2), Color(0xFF2AABEE)],
   };
 }
 

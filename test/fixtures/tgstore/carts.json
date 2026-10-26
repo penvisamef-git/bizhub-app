@@ -1,0 +1,38 @@
+{
+ "success": true,
+ "data": {
+  "settings": {
+   "on": true,
+   "after_min": 60,
+   "text": ""
+  },
+  "stats": {
+   "sent": 1,
+   "back": 0,
+   "back_total": 0
+  },
+  "default_text": "🛒 <b>{shop}</b>\nYou left {n} in your cart. Tap to finish your order.\nអ្នកនៅមានទំនិញ {n} ក្នុងកន្ត្រក។ ចុចដើម្បីបញ្ចប់ការកម្ម៉ង់។",
+  "rows": [
+   {
+    "_id": "6adf144899875337079ac01a",
+    "name": "Rithy",
+    "username": "",
+    "n": 4,
+    "total": 7.2,
+    "at": "2026-10-26T08:50:16.372Z",
+    "reminded": false,
+    "can_message": true
+   },
+   {
+    "_id": "6adf144899875337079ac008",
+    "name": "Mony",
+    "username": "mony_kh",
+    "n": 3,
+    "total": 5.3,
+    "at": "2026-10-26T05:50:16.337Z",
+    "reminded": true,
+    "can_message": true
+   }
+  ]
+ }
+}

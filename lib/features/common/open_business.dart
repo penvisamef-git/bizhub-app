@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'web_page.dart';
 
 // Open one business: types rebuilt in the app open their own screens, the others still open the web screen.
-const nativeTypes = {'namecard', 'restaurant', 'mart', 'guest_house', 'attendance', 'debt_book', 'qr_gen', 'website', 'flipbook', 'menu_qr', 'stamp_card', 'event', 'digital_note'};
+const nativeTypes = {'namecard', 'restaurant', 'mart', 'guest_house', 'attendance', 'debt_book', 'qr_gen', 'website', 'flipbook', 'menu_qr', 'stamp_card', 'event', 'digital_note', 'tg_store'};
 
 void openBusiness(BuildContext context, {required String id, required String name, String category = '', String tab = ''}) {
   if (category == 'restaurant') {
@@ -21,6 +21,10 @@ void openBusiness(BuildContext context, {required String id, required String nam
   }
   if (category == 'digital_note') {
     context.push(Uri(path: '/biz/note/$id', queryParameters: {'name': name, if (tab.isNotEmpty) 'tab': tab}).toString());
+    return;
+  }
+  if (category == 'tg_store') {
+    context.push(Uri(path: '/biz/tgstore/$id', queryParameters: {'name': name, if (tab.isNotEmpty) 'tab': tab}).toString());
     return;
   }
   if (category == 'event') {

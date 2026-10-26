@@ -1,0 +1,82 @@
+{
+ "success": true,
+ "data": {
+  "customer": {
+   "_id": "6adf144899875337079abf9e",
+   "name": "Sreyleak",
+   "phone": "010555666",
+   "username": "",
+   "address": "",
+   "telegram": false,
+   "can_message": false,
+   "orders": 0,
+   "placed": 1,
+   "spent": 0,
+   "last_order_at": "2026-10-26T08:50:16.095Z",
+   "note": "",
+   "created_date": "2026-10-26T08:50:16.095Z"
+  },
+  "orders": [
+   {
+    "_id": "6adf14482f6cacc8994f6ad9",
+    "no": 5,
+    "mode": "pickup",
+    "table": "",
+    "address": "",
+    "note": "",
+    "customer": {
+     "tg_id": "",
+     "username": "",
+     "name": "Sreyleak",
+     "phone": "010555666"
+    },
+    "items": [
+     {
+      "product_id": "6adf14402f6cacc8994f6a9a",
+      "name": "Americano",
+      "price": 1.75,
+      "qty": 1,
+      "options": [],
+      "note": "",
+      "total": 1.75
+     }
+    ],
+    "subtotal": 1.75,
+    "discount": 0,
+    "promo": "",
+    "fee": 0,
+    "total": 1.75,
+    "currency": "USD",
+    "pay": {
+     "method": "cash",
+     "status": "unpaid",
+     "proof": "",
+     "paid_at": null,
+     "custom": null
+    },
+    "status": "cancelled",
+    "eta_min": 0,
+    "reason": "Out of croissants",
+    "timeline": [
+     {
+      "status": "new",
+      "at": "2026-10-26T08:50:16.097Z",
+      "by": "Sreyleak"
+     },
+     {
+      "status": "cancelled",
+      "at": "2026-10-26T08:50:16.306Z",
+      "by": "Sokha"
+     }
+    ],
+    "via": "web",
+    "zone": null,
+    "rider": null,
+    "riders_sent": false,
+    "from_remind": false,
+    "created_date": "2026-10-26T08:50:16.098Z"
+   }
+  ],
+  "favourites": []
+ }
+}

@@ -64,7 +64,7 @@ class SiteInfo {
 // same as the web (homepage/defaults.js groups) while the API has none
 const _defaultGroups = [
   {'key': 'online', 'en': 'Online & QR', 'km': 'អនឡាញ & QR', 'types': ['namecard', 'website', 'menu_qr', 'qr_gen', 'stamp_card']},
-  {'key': 'system', 'en': 'Management systems', 'km': 'ប្រព័ន្ធគ្រប់គ្រង', 'types': ['restaurant', 'mart', 'guest', 'attend', 'event']},
+  {'key': 'system', 'en': 'Management systems', 'km': 'ប្រព័ន្ធគ្រប់គ្រង', 'types': ['restaurant', 'mart', 'guest', 'tg_store', 'attend', 'event']},
   {'key': 'personal', 'en': 'Personal', 'km': 'ផ្ទាល់ខ្លួន', 'types': ['flipbook', 'debt_book', 'digital_note']},
 ];
 

@@ -537,7 +537,7 @@ class _TypeBar extends StatelessWidget {
   }
 }
 
-int bizIndex(String k) => const ['namecard', 'restaurant', 'attendance', 'guest_house', 'mart', 'menu_qr', 'flipbook', 'qr_gen', 'website', 'debt_book', 'stamp_card', 'event', 'digital_note'].indexOf(k).clamp(0, 99);
+int bizIndex(String k) => const ['namecard', 'restaurant', 'attendance', 'guest_house', 'mart', 'menu_qr', 'flipbook', 'qr_gen', 'website', 'debt_book', 'stamp_card', 'event', 'digital_note', 'tg_store'].indexOf(k).clamp(0, 99);
 
 class _ListCard extends StatelessWidget {
   final String title, empty;
