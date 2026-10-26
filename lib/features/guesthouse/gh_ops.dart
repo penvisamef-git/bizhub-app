@@ -600,16 +600,16 @@ class _HousekeepingTabState extends State<HousekeepingTab> {
                               ? _x(ctx, 'hkArriving')
                               : _x(ctx, 'hkEmpty');
                           return Container(
-                            padding: const EdgeInsets.all(12),
+                            padding: const EdgeInsets.fromLTRB(12, 15, 12, 12),
+                            // one colour per border (mixed colours + rounded corners drew nothing), the strip on top
                             decoration: BoxDecoration(
                               color: col.withValues(alpha: .07),
                               borderRadius: BorderRadius.circular(16),
-                              border: Border(
-                                top: BorderSide(color: col, width: 4),
-                                left: BorderSide(color: col.withValues(alpha: .25)),
-                                right: BorderSide(color: col.withValues(alpha: .25)),
-                                bottom: BorderSide(color: col.withValues(alpha: .25)),
-                              ),
+                              border: Border.all(color: col.withValues(alpha: .25)),
+                            ),
+                            foregroundDecoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border(top: BorderSide(color: col, width: 4)),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,

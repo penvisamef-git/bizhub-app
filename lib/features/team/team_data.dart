@@ -31,6 +31,12 @@ final teamProvider = FutureProvider.family<Json, String>((ref, id) async {
   return obj((await ref.read(apiProvider).get('${Api.user}/businesses/$id/team'))['data']);
 });
 
+// businesses I may only look at (a View only member): the screens grey out their buttons (ctx.readOnly), the API
+// refuses changes anyway. Set by TeamFrame before the business screen builds.
+final _viewOnly = <String>{};
+bool teamViewOnly(String id) => _viewOnly.contains(id);
+void markTeamViewOnly(String id, bool on) => on ? _viewOnly.add(id) : _viewOnly.remove(id);
+
 // a business someone shared with me (and its Team is on), from the list above
 Json? sharedOf(Json? shared, String id) {
   for (final b in objs(shared?['businesses'])) {

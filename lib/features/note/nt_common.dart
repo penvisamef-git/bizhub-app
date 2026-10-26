@@ -13,6 +13,7 @@ import '../../core/providers.dart' show prefStr, prefSetStr;
 import '../../core/theme.dart';
 import '../../widgets/buy_sheet.dart';
 import '../../widgets/ui.dart';
+import '../team/team_data.dart' show teamViewOnly;
 import '../mart/mart_kit.dart' show showSheet;
 import 'nt_api.dart';
 import 'nt_data.dart';
@@ -42,7 +43,8 @@ class NtCtx {
   Json get business => obj(data['business']);
   Json get telegram => obj(data['telegram']);
   num price(String k) => n(prices[k]);
-  bool get readOnly => license['read_only'] == true;
+  // View only team members (v1.5) can look but not change anything
+  bool get readOnly => teamViewOnly(id) || license['read_only'] == true;
   bool get inGrace => license['in_grace'] == true;
   num get fileLimit => n(book['file_limit']) > 0 ? n(book['file_limit']) : 20 * 1048576;
   String get bizName => str(business['name']);

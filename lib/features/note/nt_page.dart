@@ -8,6 +8,7 @@ import '../../core/format.dart' show fmt;
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../widgets/ui.dart';
+import '../team/team_frame.dart' show TeamTopBtn;
 import 'nt_api.dart';
 import 'nt_common.dart';
 import 'nt_extras_reg.dart';
@@ -305,6 +306,7 @@ class _NotePageState extends ConsumerState<NotePage> {
               style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
           ),
+          TeamTopBtn(id: widget.id, name: name), // owner: who else can open this business (v1.5)
         ],
       ),
     );

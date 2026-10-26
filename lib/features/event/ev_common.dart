@@ -8,6 +8,7 @@ import '../../core/format.dart' show fmt;
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
 import '../../widgets/ui.dart';
+import '../team/team_data.dart' show teamViewOnly;
 import '../mart/mart_common.dart' show GoldBtn;
 
 // Event Tickets — shared pieces (the web's dashboard/client/event: text.js words + the dashboard ctx).
@@ -48,7 +49,8 @@ class EvCtx {
   List<Json> get payMethods => objs(data['pay_methods']);
   Json addon(String k) => obj(obj(data['addons'])[k]);
   bool on(String k) => addon(k)['active'] == true;
-  bool get readOnly => business['status'] == false || license['read_only'] == true;
+  // View only team members (v1.5) can look but not change anything
+  bool get readOnly => teamViewOnly(id) || business['status'] == false || license['read_only'] == true;
   String get orgName => str(org['name']).isNotEmpty ? str(org['name']) : str(business['name']);
   Json? eventById(String eid) => events.where((e) => str(e['_id']) == eid).firstOrNull;
 

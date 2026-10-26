@@ -8,6 +8,7 @@ import '../../core/format.dart';
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
 import '../../widgets/ui.dart';
+import '../team/team_data.dart' show teamViewOnly;
 
 // Shared pieces of the restaurant screens (the web's dashboard/client/restaurant/parts.jsx + text.js helpers).
 
@@ -42,7 +43,8 @@ class RestCtx {
   String get lang => t.lang;
   Json get license => obj(overview['license']);
   Json get limits => obj(overview['limits']);
-  bool get readOnly => obj(overview['business'])['status'] == false || license['locked'] == true;
+  // View only team members (v1.5) can look but not change anything
+  bool get readOnly => teamViewOnly(id) || obj(overview['business'])['status'] == false || license['locked'] == true;
   List<Json> get addons => objs(overview['addons']);
   Json addon(String key) => addons.firstWhere((a) => a['key'] == key, orElse: () => {});
   bool addonOn(String key) => addon(key)['active'] == true;

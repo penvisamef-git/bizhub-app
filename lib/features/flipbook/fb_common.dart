@@ -13,6 +13,7 @@ import '../../core/theme.dart';
 import '../../widgets/pay.dart';
 import '../../widgets/ui.dart';
 import '../common/qr_card.dart';
+import '../team/team_data.dart' show teamViewOnly;
 import '../mart/mart_common.dart' show GoldBtn;
 import '../mart/mart_kit.dart' show MSheet, showSheet;
 import '../owner/data.dart' show coinsChanged;
@@ -47,7 +48,8 @@ class FbCtx {
   String get libName => str(settings['title']).isNotEmpty ? str(settings['title']) : str(business['name']);
   Json addon(String k) => obj(obj(data['addons'])[k]);
   bool on(String k) => addon(k)['active'] == true;
-  bool get readOnly => business['status'] == false;
+  // View only team members (v1.5) can look but not change anything
+  bool get readOnly => teamViewOnly(id) || business['status'] == false;
   String m(String key, [Map<String, Object?> vars = const {}]) => t('fb.$key', vars);
 
   void fail(Object e) {

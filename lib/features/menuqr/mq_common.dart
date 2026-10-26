@@ -14,6 +14,7 @@ import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../widgets/pay.dart';
 import '../../widgets/ui.dart';
+import '../team/team_data.dart' show teamViewOnly;
 import '../mart/mart_common.dart' show GoldBtn;
 import '../mart/mart_kit.dart' show MSheet, showSheet;
 import '../owner/data.dart' show coinsChanged;
@@ -45,7 +46,8 @@ class MqCtx {
   String get currency => str(settings['currency']).isEmpty ? 'USD' : str(settings['currency']);
   Json addon(String k) => obj(obj(data['addons'])[k]);
   bool on(String k) => addon(k)['active'] == true;
-  bool get readOnly => business['status'] == false || license['locked'] == true;
+  // View only team members (v1.5) can look but not change anything
+  bool get readOnly => teamViewOnly(id) || business['status'] == false || license['locked'] == true;
   String m(String key, [Map<String, Object?> vars = const {}]) => t('mq.$key', vars);
 
   void setSettings(Json s) => put((_) => {'settings': s});

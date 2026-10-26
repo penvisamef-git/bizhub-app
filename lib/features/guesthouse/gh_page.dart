@@ -14,6 +14,7 @@ import '../../core/theme.dart';
 import '../../widgets/buy_sheet.dart';
 import '../../widgets/ui.dart';
 import '../common/branches_view.dart';
+import '../team/team_frame.dart' show TeamTopBtn;
 import '../mart/mart_common.dart' show mDate;
 import 'gh_common.dart';
 import 'gh_daily.dart';
@@ -537,6 +538,7 @@ class _GuestHousePageState extends ConsumerState<GuestHousePage> {
               style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
           ),
+          TeamTopBtn(id: widget.id, name: name), // owner: who else can open this business (v1.5)
         ],
       ),
     );

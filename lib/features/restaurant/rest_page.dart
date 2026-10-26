@@ -14,6 +14,7 @@ import '../../widgets/color_pick.dart';
 import '../../widgets/ui.dart';
 import 'rest_common.dart';
 import '../common/branches_view.dart';
+import '../team/team_frame.dart' show TeamTopBtn;
 import 'rest_connect.dart';
 import 'rest_display.dart';
 import 'rest_looks.dart';
@@ -463,6 +464,7 @@ class _RestaurantPageState extends ConsumerState<RestaurantPage> {
               style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
           ),
+          TeamTopBtn(id: widget.id, name: name), // owner: who else can open this business (v1.5)
         ],
       ),
     );

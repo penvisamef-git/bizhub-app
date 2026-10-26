@@ -12,6 +12,7 @@ import '../../core/format.dart' show fmt;
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
 import '../../widgets/ui.dart';
+import '../team/team_data.dart' show teamViewOnly;
 import '../mart/mart_common.dart' show GoldBtn;
 import 'qg_data.dart';
 import 'qr_art.dart';
@@ -44,7 +45,8 @@ class QgCtx {
   String get scanMe => m('frameLabelPh');
   Json addon(String k) => obj(obj(data['addons'])[k]);
   bool on(String k) => addon(k)['active'] == true;
-  bool get readOnly => business['status'] == false;
+  // View only team members (v1.5) can look but not change anything
+  bool get readOnly => teamViewOnly(id) || business['status'] == false;
   String m(String key, [Map<String, Object?> vars = const {}]) => t('qg.$key', vars);
 
   void fail(Object e) {

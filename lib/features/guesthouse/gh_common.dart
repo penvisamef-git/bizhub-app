@@ -8,6 +8,7 @@ import '../../core/api.dart';
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
 import '../../widgets/ui.dart';
+import '../team/team_data.dart' show teamViewOnly;
 import '../mart/mart_common.dart' show money;
 
 // Shared pieces of the Guest House screens (the web's dashboard/client/guesthouse/text.js helpers + the dashboard ctx).
@@ -43,7 +44,8 @@ class GhCtx {
 
   Json addon(String k) => obj(obj(data['addons'])[k]);
   bool addonOn(String k) => addon(k)['active'] == true;
-  bool get readOnly => business['status'] == false || license['locked'] == true;
+  // View only team members (v1.5) can look but not change anything
+  bool get readOnly => teamViewOnly(id) || business['status'] == false || license['locked'] == true;
   String get cur => str(settings['currency']).isEmpty ? 'USD' : str(settings['currency']);
   String g(String key, [Map<String, Object?> vars = const {}]) => t('gh.$key', vars);
   String method(String k) => t.or('gh.methods.$k', k);

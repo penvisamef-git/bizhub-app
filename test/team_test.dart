@@ -5,6 +5,7 @@ import 'package:bizhub_admin/core/api.dart';
 import 'package:bizhub_admin/core/i18n.dart';
 import 'package:bizhub_admin/core/providers.dart';
 import 'package:bizhub_admin/core/theme.dart';
+import 'package:bizhub_admin/features/common/account_page.dart';
 import 'package:bizhub_admin/features/owner/business_page.dart';
 import 'package:bizhub_admin/features/team/join_page.dart';
 import 'package:bizhub_admin/features/team/my_id_card.dart';
@@ -144,11 +145,12 @@ Widget _app(_Api api, String start, {String lang = 'en', bool dark = false}) {
       GoRoute(path: '/o/join/:code', builder: (_, s) => JoinPage(code: s.pathParameters['code']!)),
       GoRoute(path: '/updates', builder: (_, _) => const UpdatesPage()),
       GoRoute(
-        path: '/account',
+        path: '/id',
         builder: (_, _) => Scaffold(
           body: SafeArea(child: ListView(padding: const EdgeInsets.all(16), children: const [MyIdCard()])),
         ),
       ),
+      GoRoute(path: '/account', builder: (_, _) => const AccountPage()),
       GoRoute(
         path: '/biz/:kind/:id',
         builder: (_, s) => TeamFrame(
@@ -314,7 +316,7 @@ void main() {
 
   testWidgets('My BizHub ID + Khmer', (t) async {
     await phone(t);
-    await t.pumpWidget(_app(_Api(), '/account'));
+    await t.pumpWidget(_app(_Api(), '/id'));
     await _settle(t);
     expect(find.text('BH-437835'), findsOneWidget);
     await _shot(t, 'my-id');
@@ -335,5 +337,35 @@ void main() {
     await _settle(t);
     expect(find.text('សកម្មភាពក្នុងប្រព័ន្ធ'), findsOneWidget);
     await _shot(t, 'updates-km-dark');
+  });
+
+  testWidgets('My account: grouped rows → name / password / BizHub ID open their own screen', (t) async {
+    await phone(t);
+    final api = _Api();
+    await t.pumpWidget(_app(api, '/account'));
+    await _settle(t);
+    expect(find.byKey(const ValueKey('acc-head')), findsOneWidget);
+    expect(find.text('BH-437835'), findsOneWidget);
+    await _shot(t, 'account');
+    await t.tap(find.byKey(const ValueKey('acc-name')));
+    await _settle(t);
+    expect(find.byKey(const ValueKey('acc-name-save')), findsOneWidget);
+    await _shot(t, 'account-name');
+    await t.pageBack();
+    await _settle(t);
+    await t.tap(find.byKey(const ValueKey('acc-password')));
+    await _settle(t);
+    expect(find.byKey(const ValueKey('acc-password-save')), findsOneWidget);
+    await _shot(t, 'account-password');
+    await t.pageBack();
+    await _settle(t);
+    await t.tap(find.byKey(const ValueKey('acc-id')));
+    await _settle(t);
+    expect(find.byKey(const ValueKey('team-my-id')), findsOneWidget);
+    await t.pageBack();
+    await _settle(t);
+    await t.pumpWidget(_app(api, '/account', lang: 'km', dark: true));
+    await _settle(t);
+    await _shot(t, 'account-km-dark');
   });
 }

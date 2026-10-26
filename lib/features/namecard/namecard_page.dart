@@ -24,6 +24,7 @@ import '../../widgets/buy_sheet.dart';
 import '../../widgets/look_sheet.dart';
 import '../../widgets/ui.dart';
 import '../owner/data.dart';
+import '../team/team_frame.dart' show TeamTopBtn;
 import 'nc_card.dart';
 import 'pf_view.dart';
 
@@ -455,7 +456,8 @@ class _NameCardPageState extends ConsumerState<NameCardPage> {
                       ],
                     ),
                   ),
-                  if (_card != null && _tab == 0) RoundBtn(LucideIcons.eye, size: 42, tip: t('card.preview'), onTap: _openPreview),
+                  TeamTopBtn(id: widget.id, name: title), // owner: who else can open this business (v1.5)
+                  if (_card != null && _tab == 0) ...[const SizedBox(width: 8), RoundBtn(LucideIcons.eye, size: 42, tip: t('card.preview'), onTap: _openPreview)],
                 ],
               ),
             ),

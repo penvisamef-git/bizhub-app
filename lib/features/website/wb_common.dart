@@ -9,6 +9,7 @@ import '../../core/config.dart';
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
 import '../../widgets/ui.dart';
+import '../team/team_data.dart' show teamViewOnly;
 import '../attendance/at_setup.dart' show TimeField;
 import '../mart/mart_common.dart' show GoldBtn, fileForm;
 import '../mart/mart_kit.dart' show DayField, MSheet, showSheet;
@@ -39,7 +40,8 @@ class WbCtx {
   List<Json> get pages => objs(data['pages']);
   Json addon(String k) => obj(obj(data['addons'])[k]);
   bool on(String k) => addon(k)['active'] == true;
-  bool get readOnly => business['status'] == false || license['locked'] == true;
+  // View only team members (v1.5) can look but not change anything
+  bool get readOnly => teamViewOnly(id) || business['status'] == false || license['locked'] == true;
   String get siteUrl => '${Config.siteUrl}/site/${site['slug']}';
   String m(String key, [Map<String, Object?> vars = const {}]) => t('wb.$key', vars);
   String block(String type) => t.or('wbk.block.$type', type);

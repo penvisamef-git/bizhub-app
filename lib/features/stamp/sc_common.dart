@@ -10,6 +10,7 @@ import '../../core/format.dart' show fmt;
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
 import '../../widgets/ui.dart';
+import '../team/team_data.dart' show teamViewOnly;
 import '../mart/mart_common.dart' show GoldBtn;
 import 'sc_data.dart';
 
@@ -37,7 +38,8 @@ class ScCtx {
   List<Json> get levels => objs(data['levels']);
   Json addon(String k) => obj(obj(data['addons'])[k]);
   bool on(String k) => addon(k)['active'] == true;
-  bool get readOnly => business['status'] == false || license['read_only'] == true;
+  // View only team members (v1.5) can look but not change anything
+  bool get readOnly => teamViewOnly(id) || business['status'] == false || license['read_only'] == true;
   int get goal => n(program['goal']).toInt().clamp(3, 20);
   String get shopName => str(program['shop_name']).isNotEmpty ? str(program['shop_name']) : str(business['name']);
   List<String> get ownedThemes => (obj(data['themes'])['owned'] as List? ?? const []).map((e) => '$e').toList();

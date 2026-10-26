@@ -546,16 +546,16 @@ class PrintPage extends StatelessWidget {
           2,
           4,
           (_) => Container(
+            // one colour per border (mixed colours + rounded corners drew nothing), the colour strip on the left
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(_mm(3)),
-              border: Border(
-                left: BorderSide(color: color, width: _mm(4)),
-                top: BorderSide(color: const Color(0xFFBBBBBB), width: _mm(.5)),
-                right: BorderSide(color: const Color(0xFFBBBBBB), width: _mm(.5)),
-                bottom: BorderSide(color: const Color(0xFFBBBBBB), width: _mm(.5)),
-              ),
+              border: Border.all(color: const Color(0xFFBBBBBB), width: _mm(.5)),
             ),
-            padding: EdgeInsets.all(_mm(5)),
+            foregroundDecoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(_mm(3)),
+              border: Border(left: BorderSide(color: color, width: _mm(4))),
+            ),
+            padding: EdgeInsets.fromLTRB(_mm(9), _mm(5), _mm(5), _mm(5)), // room for the strip
             child: Row(
               children: [
                 _q(_mm(38)),

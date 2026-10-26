@@ -7,6 +7,7 @@ import '../../core/format.dart' show fmt;
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
 import '../../widgets/ui.dart';
+import '../team/team_data.dart' show teamViewOnly;
 import '../mart/mart_common.dart' show GoldBtn, todayKH;
 
 // Debt Book — shared pieces (the web's dashboard/client/debt/text.js helpers + the dashboard ctx).
@@ -32,7 +33,8 @@ class DkCtx {
   Json addon(String k) => obj(obj(data['addons'])[k]);
   bool on(String k) => addon(k)['active'] == true;
   bool get owner => data['owner'] != false;
-  bool get readOnly => business['status'] == false;
+  // View only team members (v1.5) can look but not change anything
+  bool get readOnly => teamViewOnly(id) || business['status'] == false;
   num get rate => n(book['rate']) == 0 ? 4100 : n(book['rate']);
   String m(String key, [Map<String, Object?> vars = const {}]) => t('debt.$key', vars);
 

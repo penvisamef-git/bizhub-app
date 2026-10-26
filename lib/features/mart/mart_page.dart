@@ -11,6 +11,7 @@ import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../widgets/buy_sheet.dart';
 import '../../widgets/ui.dart';
+import '../team/team_frame.dart' show TeamTopBtn;
 import 'dart:async';
 
 import 'mart_branches.dart';
@@ -540,6 +541,7 @@ class _MartPageState extends ConsumerState<MartPage> {
               style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
           ),
+          TeamTopBtn(id: widget.id, name: name), // owner: who else can open this business (v1.5)
         ],
       ),
     );

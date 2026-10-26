@@ -11,6 +11,7 @@ import '../../core/i18n.dart';
 import '../../core/theme.dart';
 import '../../widgets/look_sheet.dart';
 import '../../widgets/ui.dart';
+import '../team/team_data.dart' show teamViewOnly;
 
 // Shared pieces of the Mini Mart screens (the web's dashboard/client/mart/text.js helpers + the dashboard ctx).
 //   GET /api/user/businesses/:id/mart → { data: { business, license, limits, free, addons{key:{price,active,expires_at}}, renew_price,
@@ -36,7 +37,8 @@ class MartCtx {
   Json get counts => obj(data['counts']);
   Json addon(String k) => obj(obj(data['addons'])[k]);
   bool addonOn(String k) => addon(k)['active'] == true;
-  bool get readOnly => business['status'] == false || license['locked'] == true;
+  // View only team members (v1.5) can look but not change anything
+  bool get readOnly => teamViewOnly(id) || business['status'] == false || license['locked'] == true;
   String get cur => str(settings['currency']).isEmpty ? 'USD' : str(settings['currency']);
   String m(String key, [Map<String, Object?> vars = const {}]) => t('mart.$key', vars);
   String w(String key, [Map<String, Object?> vars = const {}]) => t('mw.$key', vars);

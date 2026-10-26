@@ -10,6 +10,8 @@ import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../widgets/buy_sheet.dart';
 import '../../widgets/ui.dart';
+import '../team/team_data.dart' show teamViewOnly;
+import '../team/team_frame.dart' show TeamTopBtn;
 import 'qg_codes.dart';
 import 'qg_inbox.dart';
 import 'qg_more.dart';
@@ -337,7 +339,7 @@ class _QrGenPageState extends ConsumerState<QrGenPage> {
                 ],
               ),
             ),
-            if (ctx.readOnly) Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 8), child: Alert(m('suspended'))),
+            if (ctx.readOnly && !teamViewOnly(ctx.id)) Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 8), child: Alert(m('suspended'))),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Material(
@@ -401,6 +403,7 @@ class _QrGenPageState extends ConsumerState<QrGenPage> {
               style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
           ),
+          TeamTopBtn(id: widget.id, name: name), // owner: who else can open this business (v1.5)
         ],
       ),
     );

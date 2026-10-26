@@ -7,6 +7,7 @@ import '../../core/api.dart';
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
 import '../../widgets/ui.dart';
+import '../team/team_data.dart' show teamViewOnly;
 import '../guesthouse/gh_common.dart' show GhCtx, ghPickPicture;
 
 // Shared pieces of the Attendance screens (the web's dashboard/client/attendance/text.js helpers + the dashboard ctx).
@@ -38,7 +39,8 @@ class AtCtx {
   List<Json> get branches => objs(data['branches']);
   Json addon(String k) => obj(obj(data['addons'])[k]);
   bool addonOn(String k) => addon(k)['active'] == true;
-  bool get readOnly => business['status'] == false || license['locked'] == true;
+  // View only team members (v1.5) can look but not change anything
+  bool get readOnly => teamViewOnly(id) || business['status'] == false || license['locked'] == true;
   String a(String key, [Map<String, Object?> vars = const {}]) => t('att.$key', vars);
   Json? shiftOf(Object? id) => shifts.where((s) => s['_id'] == id).firstOrNull;
 

@@ -298,15 +298,16 @@ class _TodayTabState extends State<TodayTab> {
                             onTap: st != null ? () => _open(st['_id']) : (ctx.readOnly ? null : () => _book(walkIn: true, roomId: str(r['_id']))),
                             child: Container(
                               height: 128,
-                              padding: const EdgeInsets.all(10),
+                              padding: const EdgeInsets.fromLTRB(10, 13, 10, 10),
+                              // one colour per border (Flutter can't round a border of mixed colours: the card drew blank),
+                              // the room's colour as a strip on top
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border(
-                                  top: BorderSide(color: hexColor(str(r['color']), col), width: 4),
-                                  left: BorderSide(color: col.withValues(alpha: .25)),
-                                  right: BorderSide(color: col.withValues(alpha: .25)),
-                                  bottom: BorderSide(color: col.withValues(alpha: .25)),
-                                ),
+                                border: Border.all(color: col.withValues(alpha: .25)),
+                              ),
+                              foregroundDecoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border(top: BorderSide(color: hexColor(str(r['color']), col), width: 4)),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
