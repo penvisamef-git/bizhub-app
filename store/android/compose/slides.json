@@ -1,0 +1,22 @@
+{
+  "en": [
+    {"id": "01-home", "shot": "1-home", "bg": "sunrise", "h": "All your businesses in one app", "s": "Sales, coins and what needs you, at a glance."},
+    {"id": "02-add", "shot": "2-add", "bg": "cream", "h": "Start a new business in a minute", "s": "13 ready-made types: café, mini mart, guest house and more."},
+    {"id": "03-card", "shot": "3-card", "bg": "night", "h": "A digital name card that stands out", "s": "Share it by link or QR. Update it any time.", "tilt": -4},
+    {"id": "04-themes", "shot": "4-themes", "bg": "plum", "h": "100+ designs, in your colour", "s": "Preview any theme. Unlock only the ones you love."},
+    {"id": "05-note", "shot": "5-note", "bg": "amber", "h": "Notes your team can share", "s": "Checklists, due dates, files and replies, together."},
+    {"id": "06-event", "shot": "6-event", "bg": "night", "h": "Sell event tickets with KHQR", "s": "Your own event page and a QR ticket for every buyer.", "extra": "ticket"},
+    {"id": "07-wallet", "shot": "7-wallet", "bg": "sunrise", "h": "Pay only for what you use", "s": "Buy coin packs in the app, or redeem a top-up card."},
+    {"id": "08-share", "shot": "8-share", "bg": "teal", "h": "Share by link or QR", "s": "Choose who can view, reply or edit.", "extra": "qr"}
+  ],
+  "km": [
+    {"id": "01-home", "shot": "1-home", "bg": "sunrise", "h": "អាជីវកម្មទាំងអស់ ក្នុងកម្មវិធីតែមួយ", "s": "ការលក់ កាក់ និងអ្វីដែលត្រូវធ្វើ មើលឃើញភ្លាមៗ។"},
+    {"id": "02-add", "shot": "2-add", "bg": "cream", "h": "បើកអាជីវកម្មថ្មី ក្នុងមួយនាទី", "s": "ប្រភេទរួចរាល់ ១៣៖ ហាងកាហ្វេ ផ្សារទំនើប ផ្ទះសំណាក់ និងច្រើនទៀត។"},
+    {"id": "03-card", "shot": "3-card", "bg": "night", "h": "កាតឈ្មោះឌីជីថល ដែលលេចធ្លោ", "s": "ចែករំលែកតាមតំណ ឬ QR។ កែប្រែបានគ្រប់ពេល។", "tilt": -4},
+    {"id": "04-themes", "shot": "4-themes", "bg": "plum", "h": "រចនាប័ទ្មជាង ១០០ តាមពណ៌របស់អ្នក", "s": "មើលមុនគ្រប់រចនាប័ទ្ម ដោះសោតែមួយដែលអ្នកចូលចិត្ត។"},
+    {"id": "05-note", "shot": "5-note", "bg": "amber", "h": "កំណត់ត្រា ចែករំលែកជាមួយក្រុម", "s": "បញ្ជីការងារ ថ្ងៃកំណត់ ឯកសារ និងការឆ្លើយតប ជាមួយគ្នា។"},
+    {"id": "06-event", "shot": "6-event", "bg": "night", "h": "លក់សំបុត្រព្រឹត្តិការណ៍ ជាមួយ KHQR", "s": "ទំព័រព្រឹត្តិការណ៍ផ្ទាល់ខ្លួន និងសំបុត្រ QR សម្រាប់អ្នកទិញម្នាក់ៗ។", "extra": "ticket"},
+    {"id": "07-wallet", "shot": "7-wallet", "bg": "sunrise", "h": "បង់តែអ្វីដែលអ្នកប្រើ", "s": "ទិញកញ្ចប់កាក់ក្នុងកម្មវិធី ឬប្រើកាតបញ្ចូលកាក់។"},
+    {"id": "08-share", "shot": "8-share", "bg": "teal", "h": "ចែករំលែកតាមតំណ ឬ QR", "s": "ជ្រើសរើសអ្នកដែលអាចមើល ឆ្លើយតប ឬកែប្រែ។", "extra": "qr"}
+  ]
+}
