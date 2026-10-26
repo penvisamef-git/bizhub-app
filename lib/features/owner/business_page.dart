@@ -5,6 +5,8 @@ import '../../core/api.dart';
 import '../../core/providers.dart';
 import '../common/shell.dart';
 import 'data.dart';
+import '../team/shared_section.dart';
+import '../team/team_data.dart';
 import 'home_page.dart' show BusinessList;
 
 // The "Business" tab: every business of the owner (search, filter by type, add, open) — it was on the dashboard before.
@@ -26,6 +28,7 @@ class _OwnerBusinessPageState extends ConsumerState<OwnerBusinessPage> {
 
   Future<void> _reload() async {
     ref.invalidate(dashboardProvider);
+    ref.invalidate(sharedProvider);
     try {
       await ref.read(dashboardProvider.future);
     } catch (_) {}
@@ -38,7 +41,11 @@ class _OwnerBusinessPageState extends ConsumerState<OwnerBusinessPage> {
     final sales = data == null ? null : (data['sales'] is Map ? obj(data['sales']) : null);
     return TabPage(
       onRefresh: _reload,
-      children: [BusinessList(list: objs(data?['businesses']), sales: sales, t: t, q: _q, type: _type, onType: (v) => setState(() => _type = v), loading: data == null)],
+      children: [
+        BusinessList(list: objs(data?['businesses']), sales: sales, t: t, q: _q, type: _type, onType: (v) => setState(() => _type = v), loading: data == null),
+        // businesses other owners shared with me + invites + join with a code (Team access, v1.5)
+        const SharedSection(),
+      ],
     );
   }
 }

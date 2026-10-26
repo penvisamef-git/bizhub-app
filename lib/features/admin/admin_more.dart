@@ -10,6 +10,7 @@ import '../../core/theme.dart';
 import '../../widgets/ui.dart';
 import '../common/settings_parts.dart';
 import '../common/shell.dart';
+import '../updates/updates_page.dart' show updatesText;
 import 'admin_parts.dart';
 
 // "More" of the super admin bottom bar — the rest of SUPER_NAV + the BizHub team pages
@@ -80,6 +81,7 @@ class AdminMorePage extends ConsumerWidget {
         MenuCard(
           rows: [
             MenuRow(icon: LucideIcons.userRound, label: t('messages.navAccount'), onTap: () => context.push('/account')),
+            MenuRow(icon: LucideIcons.history, label: updatesText(t.lang, 'title'), onTap: () => context.push('/updates')),
             MenuRow(icon: LucideIcons.logOut, label: t('messages.logout'), danger: true, onTap: () => logout(context, ref)),
           ],
         ),

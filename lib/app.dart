@@ -51,6 +51,10 @@ import 'features/owner/home_page.dart';
 import 'features/owner/licenses_page.dart';
 import 'features/owner/owner_more.dart';
 import 'features/owner/wallet_page.dart';
+import 'features/team/join_page.dart';
+import 'features/team/team_frame.dart';
+import 'features/team/team_page.dart';
+import 'features/updates/updates_page.dart';
 
 const _public = ['/welcome', '/login', '/login-qr', '/signup', '/forgot'];
 
@@ -59,12 +63,16 @@ String homeOf(Session s) => s.superAdmin ? '/a/dash' : '/o/home';
 // BizHub links opened from the phone (app links: https://bizhubcambodia.com/app/...) → the same screen in the app
 String? webLinkTarget(Uri u) {
   final p = u.path.replaceAll(RegExp(r'/+$'), '');
+  // a Team invite link: /app/join/AB12CD or the short /join/AB12CD
+  final join = RegExp(r'^(?:/app)?/join/([A-Za-z0-9]{6})$').firstMatch(p);
+  if (join != null) return '/o/join/${join[1]!.toUpperCase()}';
   if (p != '/app' && !p.startsWith('/app/')) return null;
   final redeem = RegExp(r'^\d{12}$').hasMatch(u.queryParameters['redeem'] ?? '') ? '?redeem=${u.queryParameters['redeem']}' : '';
   return switch (p) {
     '/app/wallet' => '/o/wallet$redeem',
     '/app/licenses' => '/o/licenses',
     '/app/support' => '/o/support',
+    '/app/updates' => '/updates',
     '/app/coins' || '/app/wallet/coins' => '/o/coins',
     '/app/super-admin/inbox' => '/a/inbox',
     '/app/super-admin/coin-orders' => '/a/orders',
@@ -140,59 +148,68 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, s) => AddBusinessPage(edit: s.extra as Map<String, dynamic>?),
       ),
       GoRoute(path: '/o/licenses', builder: (_, _) => const LicensesPage()),
+      // Team access (v1.5): the owner's team of one business · joining from an invite link or code
+      GoRoute(
+        path: '/o/team/:id',
+        builder: (_, s) => TeamPage(id: s.pathParameters['id']!, name: s.uri.queryParameters['name'] ?? ''),
+      ),
+      GoRoute(
+        path: '/o/join/:code',
+        builder: (_, s) => JoinPage(code: s.pathParameters['code']!),
+      ),
       // Android (Google Play): coins only through Google Play Billing · elsewhere: the bank / KHQR coin shop
       GoRoute(path: '/o/coins', builder: (_, _) => playBilling ? const CoinPlayPage() : const CoinShopPage()),
       GoRoute(
         path: '/biz/restaurant/:id',
-        builder: (_, s) => RestaurantPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: RestaurantPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
       ),
       GoRoute(
         path: '/biz/mart/:id',
-        builder: (_, s) => MartPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: MartPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
       ),
       GoRoute(
         path: '/biz/guesthouse/:id',
-        builder: (_, s) => GuestHousePage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: GuestHousePage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
       ),
       GoRoute(
         path: '/biz/attendance/:id',
-        builder: (_, s) => AttendancePage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: AttendancePage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
       ),
       GoRoute(
         path: '/biz/menuqr/:id',
-        builder: (_, s) => MenuQrPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: MenuQrPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
       ),
       GoRoute(
         path: '/biz/flipbook/:id',
-        builder: (_, s) => FlipBookPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: FlipBookPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
       ),
       GoRoute(
         path: '/biz/website/:id',
-        builder: (_, s) => WebsitePage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: WebsitePage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
       ),
       GoRoute(
         path: '/biz/qrgen/:id',
-        builder: (_, s) => QrGenPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: QrGenPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
       ),
       GoRoute(
         path: '/biz/debt/:id',
-        builder: (_, s) => DebtPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: DebtPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
       ),
       GoRoute(
         path: '/biz/note/:id',
-        builder: (_, s) => NotePage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: NotePage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
       ),
       GoRoute(
         path: '/biz/event/:id',
-        builder: (_, s) => EventPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: EventPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
       ),
       GoRoute(
         path: '/biz/stamp/:id',
-        builder: (_, s) => StampPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: StampPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
       ),
       GoRoute(
         path: '/biz/namecard/:id',
-        builder: (_, s) => NameCardPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: NameCardPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
       ),
       // super admin: Dashboard · Customers · Businesses · Coins · More
       StatefulShellRoute.indexedStack(
@@ -235,6 +252,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, s) => CustomerDetailPage(id: s.pathParameters['id']!),
       ),
       GoRoute(path: '/account', builder: (_, _) => const AccountPage()),
+      // System activity: what changed in each version (owners and BizHub staff)
+      GoRoute(path: '/updates', builder: (_, _) => const UpdatesPage()),
       // a web screen inside the app: /web?path=/app/business/123&title=Sokha%20Coffee
       GoRoute(
         path: '/web',

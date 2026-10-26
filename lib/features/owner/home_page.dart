@@ -15,6 +15,7 @@ import '../../widgets/ui.dart';
 import '../common/delete_account.dart';
 import '../common/shell.dart';
 import '../common/open_business.dart';
+import '../team/team_text.dart' show teamText;
 import 'data.dart';
 
 const bizTypes = ['namecard', 'menu_qr', 'flipbook', 'qr_gen', 'website', 'restaurant', 'attendance', 'guest_house', 'mart', 'debt_book', 'stamp_card', 'event', 'digital_note'];
@@ -928,13 +929,22 @@ class _BizCard extends StatelessWidget {
                   const Spacer(),
                   if (arrange != null)
                     Padding(padding: const EdgeInsets.all(6), child: Icon(LucideIcons.gripVertical, size: 16, color: c.muted))
-                  else
+                  else ...[
+                    // Team access (v1.5): who else can open this business
+                    IconButton(
+                      key: ValueKey('team-open-${b['_id']}'),
+                      tooltip: teamText[t.lang]?['team'] ?? 'Team',
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => context.push(Uri(path: '/o/team/${b['_id']}', queryParameters: {'name': str(b['name'])}).toString()),
+                      icon: Icon(LucideIcons.users, size: 15, color: c.muted),
+                    ),
                     IconButton(
                       tooltip: t('dash.edit'),
                       visualDensity: VisualDensity.compact,
                       onPressed: () => context.push('/o/add', extra: b),
                       icon: Icon(LucideIcons.pencil, size: 15, color: c.muted),
                     ),
+                  ],
                 ],
               ),
               const SizedBox(height: 10),
@@ -1080,12 +1090,19 @@ class _BizRow extends StatelessWidget {
             if (b['status'] == false) ...[const SizedBox(width: 6), Chip2(t('sa.suspended'), tone: Tone.danger)],
             if (arrange != null)
               _MoveBtns(a: arrange!, t: t)
-            else
+            else ...[
+              IconButton(
+                key: ValueKey('team-open-${b['_id']}'),
+                tooltip: teamText[t.lang]?['team'] ?? 'Team',
+                onPressed: () => context.push(Uri(path: '/o/team/${b['_id']}', queryParameters: {'name': str(b['name'])}).toString()),
+                icon: Icon(LucideIcons.users, size: 16, color: c.muted),
+              ),
               IconButton(
                 tooltip: t('dash.edit'),
                 onPressed: () => context.push('/o/add', extra: b),
                 icon: Icon(LucideIcons.pencil, size: 16, color: c.muted),
               ),
+            ],
           ],
         ),
       ),

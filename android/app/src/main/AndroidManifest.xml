@@ -39,6 +39,9 @@
                 <data android:pathPrefix="/app/wallet"/>
                 <data android:pathPrefix="/app/licenses"/>
                 <data android:pathPrefix="/app/support"/>
+                <!-- Team invite links (v1.5): /app/join/AB12CD and the short /join/AB12CD -->
+                <data android:pathPrefix="/app/join"/>
+                <data android:pathPrefix="/join/"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

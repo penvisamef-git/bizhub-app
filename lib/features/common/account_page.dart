@@ -8,6 +8,7 @@ import '../../core/api.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../widgets/ui.dart';
+import '../team/my_id_card.dart';
 import 'delete_account.dart';
 import 'settings_parts.dart';
 import 'shell.dart';
@@ -238,6 +239,8 @@ class _AccountPageState extends ConsumerState<AccountPage> {
         const SizedBox(height: 18),
         MenuCard(rows: [MenuRow(icon: LucideIcons.logOut, label: t('messages.logout'), danger: true, onTap: () => logout(context, ref))]),
         // "Delete my account" (owners; Google Play / App Store rule)
+        // my BizHub ID: a business owner adds me to their team with it (v1.5)
+        if (!s.team) ...[const SizedBox(height: 18), const MyIdCard()],
         if (!s.team) ...[const SizedBox(height: 18), const DeleteAccountCard()],
       ],
     );
