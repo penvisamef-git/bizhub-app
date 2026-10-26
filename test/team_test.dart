@@ -330,8 +330,9 @@ void main() {
     await phone(t);
     await t.pumpWidget(_app(_Api(), '/updates'));
     await _settle(t);
-    expect(find.byKey(const ValueKey('up-v-1.5.0')), findsOneWidget);
-    expect(find.text('Testing · coming soon'), findsOneWidget);
+    expect(find.byKey(const ValueKey('up-v-1.5.5')), findsOneWidget);
+    expect(find.text('Lower Flip Book prices'), findsOneWidget);
+    expect(find.text('Testing · coming soon'), findsWidgets);
     await _shot(t, 'updates');
     await t.pumpWidget(_app(_Api(), '/updates', lang: 'km', dark: true));
     await _settle(t);

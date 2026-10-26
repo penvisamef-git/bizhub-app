@@ -14,6 +14,19 @@ class Release {
 
 const changelog = <Release>[
   Release(
+    version: '1.5.5',
+    status: 'testing',
+    date: '2026-10',
+    titleEn: 'Lower Flip Book prices',
+    titleKm: 'តម្លៃសៀវភៅត្រឡប់ PDF ថោកជាងមុន',
+    subEn: 'Two Flip Book PDF extras cost less.',
+    subKm: 'មុខងារបន្ថែមពីររបស់សៀវភៅត្រឡប់ PDF មានតម្លៃថោកជាងមុន។',
+    items: [
+      Change('better', 'More book places: 1 coin per book — 5 more books for 5 coins (was 25).', 'កន្លែងសៀវភៅបន្ថែម៖ 1 កាក់ ក្នុងមួយក្បាល — សៀវភៅ 5 ក្បាលបន្ថែម 5 កាក់ (ពីមុន 25)។'),
+      Change('better', 'Clickable pages: 25 coins, once, forever (was 60).', 'ទំព័រចុចបាន៖ 25 កាក់ ម្តង ជារៀងរហូត (ពីមុន 60)។'),
+    ],
+  ),
+  Release(
     version: '1.5.0',
     status: 'testing',
     date: '2026-10',
