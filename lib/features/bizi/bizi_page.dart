@@ -1,0 +1,802 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+
+import '../../core/api.dart';
+import '../../core/i18n.dart';
+import '../../core/providers.dart';
+import '../../core/theme.dart';
+import '../../widgets/ui.dart';
+import '../common/open_business.dart';
+import '../owner/coin_play.dart' show playBilling;
+import '../owner/data.dart';
+import '../team/team_data.dart';
+import 'bizi_bubble.dart';
+import 'bizi_face.dart';
+import 'bizi_find.dart';
+
+// Bizi's search screen (/o/bizi) — the same box as ⌘K on the website:
+//   here, without the server: the sections of every business I can open, the how-tos ("how do I pair a POS?"),
+//   dark mode / language, my recent picks; the server (GET /api/user/search): products, orders, bookings, people…
+//   in all my businesses, and the smart words ("new", "unpaid orders today", "ការកម្ម៉ង់ថ្មី").
+//   Empty box: what Bizi has to say (the brief), smart-word chips, questions, recent, my businesses.
+
+const _groups = ['smart', 'pages', 'help', 'businesses', 'products', 'orders', 'people', 'other'];
+const _groupsAsked = ['help', 'smart', 'pages', 'businesses', 'products', 'orders', 'people', 'other'];
+const _recentKey = 'bizi_recent';
+
+// web addresses (alerts, results) → the app's own screens
+String appRoute(String href) {
+  final p = href.split('?').first;
+  if (href.startsWith('/app/licenses?tab=coins')) return '/o/coins';
+  return switch (p) {
+    '/app/licenses' => '/o/licenses',
+    '/app/businesses' => '/o/business',
+    '/app/wallet' => '/o/wallet',
+    '/app/account' || '/app/settings' => '/account',
+    '/app/support' => '/o/support',
+    '/app/updates' => '/updates',
+    _ => '/o/home',
+  };
+}
+
+// words only the app needs (buying coins on a phone goes through the store)
+const _appWords = {
+  'en': {
+    'storeSteps': ['Open More → “Buy coins” (or tap your coins at the top).', 'Pick a package.', 'Pay with {store} — the coins are added at once.'],
+  },
+  'km': {
+    'storeSteps': ['បើក ច្រើនទៀត → “ទិញកាក់” (ឬចុចកាក់របស់អ្នកនៅខាងលើ)។', 'ជ្រើសកញ្ចប់។', 'បង់ជាមួយ {store} — កាក់ត្រូវបានបញ្ចូលភ្លាមៗ។'],
+  },
+};
+
+class _Row {
+  final String group, kind, id, title, sub;
+  final IconData icon;
+  final String level;
+  final Json? business; // open this business (at tab)
+  final String tab;
+  final String route; // or this app screen
+  final String status, flag, logo, cur;
+  final Object? money;
+  final HelpHit? help;
+  final VoidCallback? run;
+  const _Row({
+    required this.group,
+    required this.kind,
+    required this.id,
+    required this.title,
+    this.sub = '',
+    this.icon = LucideIcons.arrowUpRight,
+    this.level = '',
+    this.business,
+    this.tab = '',
+    this.route = '',
+    this.status = '',
+    this.flag = '',
+    this.logo = '',
+    this.cur = '',
+    this.money,
+    this.help,
+    this.run,
+  });
+  Json toRecent() => {
+    'kind': kind,
+    'title': title,
+    'sub': sub,
+    'route': route,
+    'tab': tab,
+    if (business != null) 'business': {'_id': business!['_id'], 'name': business!['name'], 'category': business!['category']},
+  };
+}
+
+const _kindIcon = <String, IconData>{
+  'alert': LucideIcons.bellRing,
+  'help': LucideIcons.lifeBuoy,
+  'product': LucideIcons.package,
+  'order': LucideIcons.receiptText,
+  'stay': LucideIcons.bedDouble,
+  'person': LucideIcons.userRound,
+  'event': LucideIcons.ticket,
+  'note': LucideIcons.stickyNote,
+  'book': LucideIcons.bookOpen,
+  'qr': LucideIcons.qrCode,
+  'page': LucideIcons.fileText,
+  'business': LucideIcons.store,
+  'tab': LucideIcons.arrowUpRight,
+  'app': LucideIcons.layoutGrid,
+  'recent': LucideIcons.clock,
+};
+
+class BiziPage extends ConsumerStatefulWidget {
+  const BiziPage({super.key});
+  @override
+  ConsumerState<BiziPage> createState() => _BiziPageState();
+}
+
+class _BiziPageState extends ConsumerState<BiziPage> {
+  final _q = TextEditingController();
+  final _focus = FocusNode();
+  Timer? _wait;
+  int _ask = 0;
+  String _apiQ = '';
+  List<Json> _api = const [];
+  List<String> _smart = const [];
+  bool _fuzzy = false;
+  bool _busy = false;
+  bool _typing = false;
+  bool _offline = false;
+  String? _openQ; // the how-to opened (or closed: '') for these words
+  String _openId = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _q.addListener(_changed);
+  }
+
+  @override
+  void dispose() {
+    _wait?.cancel();
+    _q.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  String get _term => _q.text.trim();
+
+  // ask the server a moment after the typing stops; an older answer never replaces a newer one
+  void _changed() {
+    final term = _term;
+    _wait?.cancel();
+    if (term.length < 2 && !RegExp(r'^#?\d+$').hasMatch(term)) {
+      setState(() {
+        _apiQ = term;
+        _api = const [];
+        _smart = const [];
+        _fuzzy = false;
+        _busy = false;
+        _typing = false;
+      });
+      return;
+    }
+    setState(() => _typing = true);
+    final n = ++_ask;
+    _wait = Timer(const Duration(milliseconds: 240), () async {
+      if (!mounted) return;
+      setState(() {
+        _typing = false;
+        _busy = true;
+      });
+      try {
+        final d = obj((await ref.read(apiProvider).get('${Api.user}/search', {'q': term}))['data']);
+        if (!mounted || n != _ask) return;
+        setState(() {
+          _offline = false;
+          _apiQ = term;
+          _smart = (d['smart'] as List? ?? const []).map((e) => '$e').toList();
+          _fuzzy = d['fuzzy'] == true;
+          _api = objs(d['results']).where((r) => r['group'] != 'businesses').toList();
+        });
+      } catch (_) {
+        if (mounted && n == _ask) setState(() => _offline = true);
+      } finally {
+        if (mounted && n == _ask) setState(() => _busy = false);
+      }
+    });
+  }
+
+  List<Json> _businesses() {
+    final own = objs(ref.watch(dashboardProvider).valueOrNull?['businesses']);
+    final shared = objs(obj(ref.watch(sharedProvider).valueOrNull)['businesses']).where((b) => b['team_on'] == true).map((b) => {...b, 'shared': true});
+    return [...own, ...shared];
+  }
+
+  List<Json> _recent() {
+    try {
+      final v = jsonDecode(prefStr(_recentKey) ?? '[]');
+      return v is List ? v.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).take(6).toList() : const [];
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  void _remember(_Row r) {
+    if (r.run != null || r.help != null || r.kind == 'alert') return;
+    final keep = r.toRecent();
+    final list = [
+      keep,
+      ..._recent().where((x) => !(x['title'] == keep['title'] && x['route'] == keep['route'] && obj(x['business'])['_id'] == obj(keep['business'])['_id'] && x['tab'] == keep['tab'])),
+    ].take(6).toList();
+    prefSetStr(_recentKey, jsonEncode(list));
+  }
+
+  void _go(_Row r) {
+    if (r.help != null) {
+      setState(() {
+        final open = _currentOpen(isQuestion(_term), r.help!.id);
+        _openQ = _term;
+        _openId = open == r.help!.id ? '' : r.help!.id;
+      });
+      return;
+    }
+    if (r.run != null) {
+      r.run!();
+      return;
+    }
+    _remember(r);
+    _openTarget(context, business: r.business, tab: r.tab, route: r.route);
+  }
+
+  void _openTarget(BuildContext context, {Json? business, String tab = '', String route = ''}) {
+    final nav = GoRouter.of(context);
+    nav.pop();
+    if (business != null) {
+      openBusiness(nav.routerDelegate.navigatorKey.currentContext ?? context, id: str(business['_id']), name: str(business['name']), category: str(business['category']), tab: tab);
+    } else if (route.isNotEmpty) {
+      if (route.startsWith('/o/home') || route.startsWith('/o/business') || route.startsWith('/o/wallet') || route.startsWith('/o/more')) {
+        nav.go(route);
+      } else {
+        nav.push(route);
+      }
+    }
+  }
+
+  String? _currentOpen(bool asked, String? first) => _openQ == _term ? _openId : (asked ? first ?? '' : '');
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final lang = ref.watch(tProvider).lang;
+    final en = T.of('en');
+    final km = T.of('km');
+    String typeName(String type, String l) => (l == 'km' ? km : en).or('sa.categoryNames.$type', type);
+    String x(String k, [Map<String, Object?> v = const {}]) => biziT(lang, k, v);
+    final term = _term;
+    final ws = words(term);
+    final list = _businesses();
+    final brief = ref.watch(biziBriefProvider);
+    final asked = isQuestion(term);
+
+    _Row asBiz(Json b) => _Row(
+      group: 'businesses',
+      kind: 'business',
+      id: str(b['_id']),
+      title: str(b['name']),
+      sub: [typeName(str(b['category']), lang), if (b['shared'] == true) x('shared')].join(' · '),
+      business: b,
+      logo: str(b['photo']).isNotEmpty ? str(b['photo']) : str(b['logo_url']),
+    );
+
+    final rows = <_Row>[];
+    if (term.isEmpty) {
+      // what Bizi has to say, then my recent picks, then my businesses
+      var i = 0;
+      for (final a in objs(brief?['alerts'])) {
+        final n = a['n'] is num ? a['n'] as num : 0;
+        final key = str(a['key']);
+        final title = (n == 1 && biziHas(lang, 'alerts1.$key') ? x('alerts1.$key') : x('alerts.$key')).replaceAll('{n}', '$n');
+        final b = list.where((y) => str(y['_id']) == str(a['business_id'])).firstOrNull;
+        rows.add(
+          _Row(
+            group: 'says',
+            kind: 'alert',
+            id: 'a${i++}',
+            title: title,
+            sub: str(a['business']),
+            level: str(a['level']),
+            business: b ?? (str(a['business_id']).isEmpty ? null : {'_id': a['business_id'], 'name': a['business'], 'category': a['category']}),
+            tab: str(a['tab']),
+            route: str(a['href']).isNotEmpty ? appRoute(str(a['href'])) : (str(a['business_id']).isEmpty ? '/o/home' : ''),
+          ),
+        );
+      }
+      var r = 0;
+      for (final h in _recent()) {
+        final b = h['business'] is Map ? obj(h['business']) : null;
+        rows.add(
+          _Row(group: 'recent', kind: str(h['kind']), id: 'r${r++}', title: str(h['title']), sub: str(h['sub']), business: b, tab: str(h['tab']), route: str(h['route']), icon: LucideIcons.clock),
+        );
+      }
+      rows.addAll(list.take(8).map(asBiz));
+    } else {
+      final all = <_Row>[];
+      for (final p in findPages(list, term, typeName)) {
+        all.add(
+          _Row(
+            group: 'pages',
+            kind: 'tab',
+            id: '${p.business['_id']}:${p.tab}',
+            title: lang == 'km' ? p.km : p.en,
+            sub: [str(p.business['name']), lang == 'km' ? p.en : p.km].join(' · '),
+            business: p.business,
+            tab: p.tab,
+          ),
+        );
+      }
+      // two actions anyone may want from the box
+      final dark = Theme.of(context).brightness == Brightness.dark;
+      final acts = [
+        (
+          dark ? x('light') : x('dark'),
+          'dark light mode night theme colour color ងងឹត ភ្លឺ ពណ៌',
+          dark ? LucideIcons.sun : LucideIcons.moon,
+          () => ref.read(prefsProvider.notifier).setTheme(dark ? ThemeMode.light : ThemeMode.dark),
+        ),
+        (lang == 'km' ? 'English' : 'ភាសាខ្មែរ', 'language khmer english lang ភាសា ខ្មែរ អង់គ្លេស', LucideIcons.languages, () => ref.read(prefsProvider.notifier).setLang(lang == 'km' ? 'en' : 'km')),
+      ];
+      for (final (title, more, icon, run) in acts) {
+        if (ws.every((w) => hit(w, '$title $more'.toLowerCase()) > 0)) all.add(_Row(group: 'pages', kind: 'action', id: title, title: title, sub: x('action'), icon: icon, run: run));
+      }
+      for (final h in findHelp(term)) {
+        all.add(_Row(group: 'help', kind: 'help', id: h.id, title: h.q(lang), sub: x('helpSub'), help: h, icon: LucideIcons.lifeBuoy));
+      }
+      for (final b in list.where((b) => ws.every((w) => hit(w, '${b['name']} ${typeName(str(b['category']), 'en')} ${typeName(str(b['category']), 'km')}'.toLowerCase()) > 0)).take(6)) {
+        all.add(asBiz(b));
+      }
+      if (_apiQ == term) {
+        for (final it in _api) {
+          final b = list.where((y) => str(y['_id']) == str(it['business_id'])).firstOrNull ?? {'_id': it['business_id'], 'name': it['business'], 'category': it['category']};
+          all.add(
+            _Row(
+              group: it['smart'] == true ? 'smart' : str(it['group']),
+              kind: str(it['kind']),
+              id: str(it['id']),
+              title: str(it['title']),
+              sub: [str(it['business']), str(it['sub'])].where((s) => s.isNotEmpty).join(' · '),
+              business: str(it['href']).isNotEmpty ? null : b,
+              route: str(it['href']).isNotEmpty ? appRoute(str(it['href'])) : '',
+              tab: str(it['tab']),
+              status: str(it['status']),
+              flag: str(it['flag']),
+              money: it['money'],
+              cur: str(it['cur']),
+            ),
+          );
+        }
+      }
+      for (final g in asked ? _groupsAsked : _groups) {
+        rows.addAll(all.where((r) => r.group == g));
+      }
+    }
+
+    final help = rows.where((r) => r.help != null).toList();
+    final openId = _currentOpen(asked, help.firstOrNull?.id) ?? '';
+    final waiting = _typing || _busy;
+    final mood = term.isEmpty
+        ? BiziMood.idle
+        : waiting
+        ? BiziMood.thinking
+        : rows.isNotEmpty
+        ? BiziMood.happy
+        : BiziMood.worried;
+
+    String head(String g) => switch (g) {
+      'smart' => '${x('groups.smart')} · ${(_apiQ == term ? _smart : const <String>[]).map((k) => biziT(lang, 'smart.$k')).join(' · ')}',
+      'says' => x('says'),
+      'recent' => x('recent'),
+      'businesses' when term.isEmpty => x('quick'),
+      _ => x('groups.$g'),
+    };
+
+    final children = <Widget>[];
+    // the empty box: what Bizi has to say first, then the chips, then recent + my businesses
+    final start = <Widget>[];
+    if (term.isEmpty) {
+      start.add(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 14, 4, 10),
+          child: Text(x('start'), style: TextStyle(color: c.muted, fontSize: 14, height: 1.45)),
+        ),
+      );
+      start.add(_Chips(icon: LucideIcons.sparkles, label: x('try'), items: [for (final (v, l) in suggestions(lang)) (l, () => _q.text = v)]));
+      start.add(
+        _Chips(
+          icon: LucideIcons.lifeBuoy,
+          label: x('questions'),
+          keyPrefix: 'bizi-ask',
+          items: [for (final a in helpList.where((a) => a['popular'] == true).take(4)) (HelpHit(a, 0).q(lang), () => _q.text = HelpHit(a, 0).q(lang))],
+        ),
+      );
+    }
+    if (term.isNotEmpty && !waiting && _fuzzy && _apiQ == term) {
+      children.add(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
+          child: Text(
+            x('fuzzy', {'q': term}),
+            style: TextStyle(color: c.muted, fontWeight: FontWeight.w600),
+          ),
+        ),
+      );
+    }
+    String last = '';
+    var started = false;
+    for (final r in rows) {
+      if (!started && r.group != 'says') {
+        started = true;
+        children.addAll(start);
+      }
+      if (r.group != last) {
+        last = r.group;
+        final hot = r.group == 'smart' || r.group == 'says' || r.group == 'help';
+        children.add(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 16, 4, 6),
+            child: Text(
+              head(r.group).toUpperCase(),
+              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, letterSpacing: .6, color: hot ? c.brandInk : c.muted),
+            ),
+          ),
+        );
+      }
+      final open = r.help != null && openId == r.help!.id;
+      children.add(_RowTile(row: r, open: open, lang: lang, statusWord: r.status.isEmpty ? '' : biziT(lang, 'status.${r.status}'), flagWord: r.flag.isEmpty ? '' : x(r.flag), onTap: () => _go(r)));
+      if (open) {
+        children.add(
+          _HelpCard(
+            hit: r.help!,
+            lang: lang,
+            list: list,
+            onOpen: (target) => _openTarget(context, business: target.business, tab: target.tab, route: target.route),
+          ),
+        );
+      }
+    }
+    if (!started) children.addAll(start);
+    if (term.isNotEmpty && waiting) {
+      children.add(
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(x('busy'), style: TextStyle(color: c.muted)),
+        ),
+      );
+    }
+    if (term.isNotEmpty && !waiting && _offline) {
+      children.add(
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(x('offline'), style: TextStyle(color: c.muted)),
+        ),
+      );
+    }
+    if (term.isNotEmpty && !waiting && !_offline && rows.isEmpty) {
+      children.add(
+        Padding(
+          key: const ValueKey('bizi-none'),
+          padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 12),
+          child: Column(
+            children: [
+              Text(
+                x('empty', {'q': term}),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                asked ? x('helpNone') : x('emptySub'),
+                textAlign: TextAlign.center,
+                style: TextStyle(color: c.muted, fontSize: 13.5),
+              ),
+              if (asked) ...[
+                const SizedBox(height: 10),
+                TextButton.icon(
+                  onPressed: () => _openTarget(context, route: '/o/support'),
+                  icon: Icon(LucideIcons.messageCircle, size: 16, color: c.brandInk),
+                  label: Text(
+                    x('helpAsk'),
+                    style: TextStyle(color: c.brandInk, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: c.appBg,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(color: c.card, shape: BoxShape.circle, boxShadow: c.cardShadow),
+                    alignment: Alignment.center,
+                    child: BiziFace(mood: _typing ? BiziMood.listening : mood, size: 40),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Container(
+                      height: 50,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      decoration: BoxDecoration(
+                        color: c.card,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: c.brand, width: 1.5),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(LucideIcons.search, size: 18, color: c.muted),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextField(
+                              key: const ValueKey('bizi-input'),
+                              controller: _q,
+                              focusNode: _focus,
+                              autofocus: true,
+                              textInputAction: TextInputAction.search,
+                              autocorrect: false,
+                              onSubmitted: (_) {
+                                if (rows.isNotEmpty) _go(rows.first);
+                              },
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: c.ink),
+                              decoration: InputDecoration(
+                                isCollapsed: true,
+                                border: InputBorder.none,
+                                hintText: x('ph'),
+                                hintStyle: TextStyle(color: c.muted, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          ),
+                          if (_q.text.isNotEmpty)
+                            GestureDetector(
+                              onTap: () => _q.clear(),
+                              child: Icon(LucideIcons.circleX, size: 18, color: c.muted),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  RoundBtn(LucideIcons.x, size: 44, tip: x('close'), onTap: () => context.pop()),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                key: const ValueKey('bizi-list'),
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: EdgeInsets.fromLTRB(12, 0, 12, 24 + MediaQuery.of(context).padding.bottom),
+                children: children,
+              ),
+            ),
+            if (term.isEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                child: Text(
+                  x('soon'),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: c.muted, fontSize: 12),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Chips extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final List<(String, VoidCallback)> items;
+  final String keyPrefix;
+  const _Chips({required this.icon, required this.label, required this.items, this.keyPrefix = 'bizi-sugg'});
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: c.brandInk),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(color: c.brandInk, fontWeight: FontWeight.w700, fontSize: 12.5),
+              ),
+            ],
+          ),
+          for (final (i, (text, onTap)) in items.indexed)
+            Material(
+              color: c.card,
+              shape: StadiumBorder(side: BorderSide(color: c.line)),
+              child: InkWell(
+                key: ValueKey('$keyPrefix-$i'),
+                customBorder: const StadiumBorder(),
+                onTap: onTap,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Text(text, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RowTile extends StatelessWidget {
+  final _Row row;
+  final bool open;
+  final String lang, statusWord, flagWord;
+  final VoidCallback onTap;
+  const _RowTile({required this.row, required this.open, required this.lang, required this.statusWord, required this.flagWord, required this.onTap});
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final warn = row.level == 'warn';
+    final icon = row.kind == 'action' || row.group == 'recent' ? row.icon : (_kindIcon[row.kind] ?? row.icon);
+    final (bg, fg) = row.kind == 'help'
+        ? (c.dark ? const Color(0x2E3B82F6) : const Color(0xFFE8F1FF), c.dark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8))
+        : warn
+        ? (c.dangerBg, c.danger)
+        : (row.kind == 'alert' || row.kind == 'action' || row.kind == 'app' || row.kind == 'order' || row.kind == 'stay' ? c.active : c.chip, c.brandInk);
+    final money = row.money == null || '${row.money}'.isEmpty ? '' : biziMoney(row.money, row.cur.isEmpty ? 'USD' : row.cur);
+    return Material(
+      color: open ? c.active : Colors.transparent,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        key: ValueKey('bizi-row-${row.group}-${row.id}'),
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(11)),
+                alignment: Alignment.center,
+                child: row.kind == 'business' && row.logo.isEmpty && row.business != null
+                    ? TypeIcon(str(row.business!['category']), size: 38)
+                    : (row.logo.isNotEmpty
+                          ? Image.network(
+                              row.logo,
+                              fit: BoxFit.cover,
+                              width: 38,
+                              height: 38,
+                              errorBuilder: (_, _, _) => Icon(icon, size: 18, color: fg),
+                            )
+                          : Icon(icon, size: 18, color: fg)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      row.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
+                    ),
+                    if (row.sub.isNotEmpty)
+                      Text(
+                        row.sub,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: c.muted, fontSize: 12.5),
+                      ),
+                  ],
+                ),
+              ),
+              if (flagWord.isNotEmpty) ...[const SizedBox(width: 6), Chip2(flagWord, tone: Tone.warn)],
+              if (statusWord.isNotEmpty && statusWord != 'status.${row.status}') ...[const SizedBox(width: 6), Chip2(statusWord)],
+              if (money.isNotEmpty) ...[const SizedBox(width: 8), Text(money, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5))],
+              if (row.kind == 'help') ...[const SizedBox(width: 4), Icon(open ? LucideIcons.chevronUp : LucideIcons.chevronDown, size: 18, color: c.muted)],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// the answer under a how-to: the steps, a button to that screen (my first business of that type), and the team
+class _HelpCard extends StatelessWidget {
+  final HelpHit hit;
+  final String lang;
+  final List<Json> list;
+  final void Function(HelpTarget) onOpen;
+  const _HelpCard({required this.hit, required this.lang, required this.list, required this.onOpen});
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    String x(String k) => biziT(lang, k);
+    var steps = hit.steps(lang);
+    // on a phone coins come from the store, not a bank transfer
+    if (hit.id == 'coins_buy' && playBilling) {
+      final store = !kIsWeb && Platform.isIOS ? 'App Store' : 'Google Play';
+      steps = (_appWords[lang]?['storeSteps'] ?? _appWords['en']!['storeSteps']!).map((s) => s.replaceAll('{store}', store)).toList();
+    }
+    final to = targetOf(hit.a, list);
+    return Container(
+      key: const ValueKey('bizi-help'),
+      margin: const EdgeInsets.fromLTRB(8, 4, 8, 10),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: c.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: c.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final (i, s) in steps.indexed)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 7),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 22,
+                    height: 22,
+                    margin: const EdgeInsets.only(right: 10, top: 1),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: c.active, shape: BoxShape.circle),
+                    child: Text(
+                      '${i + 1}',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: c.brandInk),
+                    ),
+                  ),
+                  Expanded(child: Text(s, style: const TextStyle(fontSize: 14, height: 1.45))),
+                ],
+              ),
+            ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 10,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              if (to != null)
+                Btn(
+                  key: const ValueKey('bizi-help-go'),
+                  to.add ? x('helpAdd') : (hit.open(lang).isNotEmpty ? hit.open(lang) : x('helpGo')),
+                  icon: LucideIcons.arrowUpRight,
+                  small: true,
+                  onTap: () => onOpen(to),
+                ),
+              TextButton.icon(
+                onPressed: () => onOpen(const HelpTarget(route: '/o/support')),
+                icon: Icon(LucideIcons.messageCircle, size: 16, color: c.brandInk),
+                label: Text(
+                  x('helpAsk'),
+                  style: TextStyle(color: c.brandInk, fontWeight: FontWeight.w700, fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+          if (to?.business != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(str(to!.business!['name']), style: TextStyle(color: c.muted, fontSize: 12)),
+            ),
+        ],
+      ),
+    );
+  }
+}

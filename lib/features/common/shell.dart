@@ -7,6 +7,7 @@ import '../../core/format.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../widgets/ui.dart';
+import '../bizi/bizi_bubble.dart';
 import '../owner/coin_play.dart' show playCoinsBoot;
 
 // the coin number in the header (owner: own balance · super admin: treasury)
@@ -43,7 +44,7 @@ class AppShell extends ConsumerWidget {
             NavTab(LucideIcons.wallet, t('messages.navWallet')),
             NavTab(LucideIcons.ellipsis, t('messages.navMore')),
           ];
-    return Scaffold(
+    final page = Scaffold(
       extendBody: true,
       body: Column(
         children: [
@@ -56,6 +57,14 @@ class AppShell extends ConsumerWidget {
         index: nav.currentIndex,
         onTap: (i) => nav.goBranch(i, initialLocation: i == nav.currentIndex),
       ),
+    );
+    if (admin) return page;
+    // Bizi (v3.0.0) floats over the owner's tabs — tap to search, hold and drag to move it
+    return Stack(
+      children: [
+        page,
+        const Positioned.fill(child: Material(type: MaterialType.transparency, child: BiziBubble())),
+      ],
     );
   }
 }

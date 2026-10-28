@@ -22,6 +22,7 @@ import 'features/admin/admin_dashboard.dart';
 import 'features/admin/admin_more.dart';
 import 'features/admin/coin_orders.dart';
 import 'features/auth/forgot_page.dart';
+import 'features/bizi/bizi_page.dart';
 import 'features/auth/login_page.dart';
 import 'features/auth/qr_login_page.dart';
 import 'features/auth/signup_page.dart';
@@ -149,6 +150,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, s) => AddBusinessPage(edit: s.extra as Map<String, dynamic>?),
       ),
       GoRoute(path: '/o/licenses', builder: (_, _) => const LicensesPage()),
+      // Bizi (v3.0.0): search everything + how-tos (the bubble on the owner tabs opens it)
+      GoRoute(path: '/o/bizi', builder: (_, _) => const BiziPage()),
       // Team access (v1.5): the owner's team of one business · joining from an invite link or code
       GoRoute(
         path: '/o/team/:id',
