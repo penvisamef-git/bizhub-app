@@ -12,6 +12,7 @@ import 'package:bizhub_admin/features/team/my_id_card.dart';
 import 'package:bizhub_admin/features/team/team_data.dart';
 import 'package:bizhub_admin/features/team/team_frame.dart';
 import 'package:bizhub_admin/features/team/team_page.dart';
+import 'package:bizhub_admin/features/updates/changelog.dart';
 import 'package:bizhub_admin/features/updates/updates_page.dart';
 import 'package:bizhub_admin/app.dart' show webLinkTarget;
 import 'package:flutter/material.dart';
@@ -330,8 +331,8 @@ void main() {
     await phone(t);
     await t.pumpWidget(_app(_Api(), '/updates'));
     await _settle(t);
-    expect(find.byKey(const ValueKey('up-v-2.0.0')), findsOneWidget); // the newest first, the same list as the website
-    expect(find.text('Telegram Store'), findsOneWidget);
+    expect(find.byKey(ValueKey('up-v-${changelog.first.version}')), findsOneWidget); // the newest first, the same list as the website
+    expect(find.text(changelog.first.titleEn), findsOneWidget);
     expect(find.text('Testing · coming soon'), findsWidgets);
     await _shot(t, 'updates');
     await t.pumpWidget(_app(_Api(), '/updates', lang: 'km', dark: true));
