@@ -12,7 +12,7 @@ import 'bizi_find.dart';
 class BiziSettingsView extends ConsumerStatefulWidget {
   final VoidCallback onBack;
   final Future<void> Function()? onChanged;
-  final Widget Function(Json prefs, Future<void> Function(Json body) save)? more; // Bizi on Telegram goes here
+  final Widget Function(Json prefs, Future<void> Function(Json body) save, Future<void> Function() reload)? more; // Bizi on Telegram goes here
   const BiziSettingsView({super.key, required this.onBack, this.onChanged, this.more});
   @override
   ConsumerState<BiziSettingsView> createState() => _BiziSettingsViewState();
@@ -109,6 +109,7 @@ class _BiziSettingsViewState extends ConsumerState<BiziSettingsView> {
             child: Center(child: CircularProgressIndicator()),
           ),
         if (p != null) ...[
+          if (widget.more != null) widget.more!(p, _save, _load),
           _Head(x('setTell')),
           for (final k in alerts) _Switch(key: ValueKey('bizi-mute-$k'), label: x('alertNames.$k'), on: !mute.contains(k), onChanged: () => toggle(k)),
           _Switch(key: const ValueKey('bizi-mute-tips'), label: x('setTips'), on: !mute.contains('tips'), onChanged: () => toggle('tips')),
@@ -117,7 +118,6 @@ class _BiziSettingsViewState extends ConsumerState<BiziSettingsView> {
             padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
             child: Text(x('setNote'), style: TextStyle(color: c.muted, fontSize: 12.5)),
           ),
-          if (widget.more != null) widget.more!(p, _save),
         ],
       ],
     );

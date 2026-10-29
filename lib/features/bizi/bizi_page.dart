@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api.dart';
 import '../../core/i18n.dart';
@@ -21,6 +22,7 @@ import 'bizi_bubble.dart';
 import 'bizi_face.dart';
 import 'bizi_find.dart';
 import 'bizi_settings.dart';
+import 'bizi_telegram.dart';
 
 // Bizi's search screen (/o/bizi) — the same box as ⌘K on the website:
 //   here, without the server: the sections of every business I can open, the how-tos ("how do I pair a POS?"),
@@ -122,6 +124,7 @@ const _kindIcon = <String, IconData>{
 };
 
 class BiziPage extends ConsumerStatefulWidget {
+  static Future<void> Function(Uri url)? openUrl; // tests: no real Telegram (null = the phone opens it)
   const BiziPage({super.key});
   @override
   ConsumerState<BiziPage> createState() => _BiziPageState();
@@ -636,7 +639,20 @@ class _BiziPageState extends ConsumerState<BiziPage> {
             ),
             if (_settings)
               Expanded(
-                child: BiziSettingsView(onBack: () => setState(() => _settings = false), onChanged: _reloadBrief),
+                child: BiziSettingsView(
+                  onBack: () => setState(() => _settings = false),
+                  onChanged: _reloadBrief,
+                  more: (p, save, reload) => BiziTelegramSection(
+                    prefs: p,
+                    save: save,
+                    reload: reload,
+                    open: (u) async {
+                      final f = BiziPage.openUrl;
+                      if (f != null) return f(u);
+                      await launchUrl(u, mode: LaunchMode.externalApplication);
+                    },
+                  ),
+                ),
               ),
             if (!_settings)
               Expanded(

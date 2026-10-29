@@ -30,6 +30,8 @@ class _Api extends Api {
   bool weekly = true;
   final mute = <String>[];
   final snoozed = <String>[];
+  bool tgOn = false;
+  final tg = <String, dynamic>{'morning': true, 'alerts': true, 'weekly': true};
   Json _ok(Object? data) => {'success': true, 'data': data};
 
   @override
@@ -140,7 +142,7 @@ class _Api extends Api {
   Json get _prefs => {
     'mute': mute,
     'weekly': weekly,
-    'tg': {'connected': false},
+    'tg': {'configured': true, 'connected': tgOn, 'chat_name': tgOn ? 'Sokha' : '', ...tg},
     'keys': {
       'alerts': ['tg_new', 'waiting', 'sold_out', 'low_stock', 'renewals'],
       'tips': ['tg_no_group', 'rest_no_tables'],
@@ -150,21 +152,30 @@ class _Api extends Api {
   @override
   Future<Json> put(String path, [Object? body]) async {
     calls.add('PUT $path $body');
-    final b = Map<String, dynamic>.from(body as Map);
+    final b = body is Map ? Map<String, dynamic>.from(body) : <String, dynamic>{};
     if (b['mute'] is List)
       mute
         ..clear()
         ..addAll((b['mute'] as List).map((e) => '$e'));
     if (b['weekly'] is bool) weekly = b['weekly'] as bool;
+    if (b['tg'] is Map) tg.addAll(Map<String, dynamic>.from(b['tg'] as Map));
     return _ok(_prefs);
   }
 
   @override
   Future<Json> post(String path, [Object? body]) async {
     calls.add('POST $path $body');
-    final b = Map<String, dynamic>.from(body as Map);
+    final b = body is Map ? Map<String, dynamic>.from(body) : <String, dynamic>{};
     if (path.endsWith('/bizi/snooze')) snoozed.add('${b['key']}:${b['business_id']}');
+    if (path.endsWith('/bizi/telegram/link')) return _ok({'url': 'https://t.me/BizHubTestBot?start=bz_abc'});
     return _ok({'days': 14});
+  }
+
+  @override
+  Future<Json> delete(String path, [Object? body]) async {
+    calls.add('DELETE $path');
+    if (path.endsWith('/bizi/telegram')) tgOn = false;
+    return _ok({});
   }
 }
 
@@ -416,6 +427,29 @@ void main() {
         await _settle(t);
         expect(find.byKey(const ValueKey('bizi-settings')), findsOneWidget);
         await _shot(t, 'settings');
+        // Bizi on Telegram: Connect opens t.me; after Start this screen sees it by itself
+        final opened = <Uri>[];
+        BiziPage.openUrl = (u) async => opened.add(u);
+        await t.tap(find.byKey(const ValueKey('bizi-tg-connect')));
+        await _settle(t);
+        expect(opened.single.toString(), 'https://t.me/BizHubTestBot?start=bz_abc');
+        expect(api.calls.any((c) => c.startsWith('POST /api/user/bizi/telegram/link') && c.contains('lang: en')), isTrue);
+        expect(find.textContaining('press Start'), findsOneWidget);
+        api.tgOn = true; // the owner pressed Start in Telegram
+        await t.pump(const Duration(seconds: 3));
+        await _settle(t);
+        expect(find.text('Connected: Sokha'), findsOneWidget);
+        await _shot(t, 'telegram');
+        await t.tap(find.byKey(const ValueKey('bizi-tg-alerts')));
+        await _settle(t);
+        expect(api.calls.any((c) => c.startsWith('PUT /api/user/bizi/prefs') && c.contains('{tg: {alerts: false}}')), isTrue);
+        await t.tap(find.byKey(const ValueKey('bizi-tg-test')));
+        await _settle(t);
+        expect(find.text('Sent — look in Telegram'), findsOneWidget);
+        await t.tap(find.text('Disconnect'));
+        await _settle(t);
+        expect(find.byKey(const ValueKey('bizi-tg-connect')), findsOneWidget);
+        BiziPage.openUrl = null;
         await t.ensureVisible(find.byKey(const ValueKey('bizi-mute-sold_out')));
         await t.pump();
         await t.tap(find.byKey(const ValueKey('bizi-mute-sold_out')));
