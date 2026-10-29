@@ -153,6 +153,25 @@ class _Api extends Api {
           ],
         });
       }
+      if (q == 'iced latte') {
+        Json latte(String id, String bid, String shop) => {'group': 'products', 'kind': 'product', 'id': id, 'business_id': bid, 'business': shop, 'category': 'tg_store', 'role': 'owner', 'title': 'Iced latte', 'money': 2.5, 'cur': 'USD', 'tab': 'products', 'flag': ''};
+        return _ok({
+          'q': q,
+          'smart': [],
+          'fuzzy': false,
+          'results': [latte('l1', 'b1', 'Mekong Coffee Shop'), latte('l2', 'b2', 'Mekong Coffee BKK1')],
+        });
+      }
+      if (q == 'Uncle Heng') {
+        return _ok({
+          'q': q,
+          'smart': [],
+          'fuzzy': false,
+          'results': [
+            {'group': 'people', 'kind': 'person', 'id': 'd1', 'business_id': 'b3', 'business': 'Shop debts', 'category': 'debt_book', 'role': 'owner', 'title': 'Uncle Heng', 'sub': '012 777 888', 'tab': 'customers'},
+          ],
+        });
+      }
       if (q == '#12') {
         return _ok({
           'q': q,
@@ -735,6 +754,37 @@ void main() {
       expect(api.calls.any((c) => c.contains('/orders/o1/status {status: accepted}')), isTrue);
       expect(find.byKey(const ValueKey('bizi-act-done')), findsOneWidget);
       await t.pump(const Duration(seconds: 4));
+
+      // Bizi commands: the same product in two shops → "Do it for all 2" → asked once → both
+      await t.enterText(find.byKey(const ValueKey('bizi-input')), 'iced latte sold out');
+      await _settle(t);
+      expect(api.calls.any((c) => c.contains('/search') && c.contains('q: iced latte}')), isTrue);
+      expect(find.byKey(const ValueKey('bizi-act-all')), findsOneWidget);
+      expect(find.text('Sold out · Do it for all 2'), findsOneWidget);
+      await t.tap(find.byKey(const ValueKey('bizi-act-all')));
+      await _settle(t);
+      expect(find.text('Sold out — all 2: Iced latte (Mekong Coffee Shop), Iced latte (Mekong Coffee BKK1)?'), findsOneWidget);
+      await _shot(t, 'all');
+      await t.tap(find.byKey(const ValueKey('bizi-yes')).first);
+      await _settle(t);
+      expect(api.calls.where((c) => c.startsWith('PUT /api/user/businesses/') && c.endsWith('{sold_out: true}')).length, 2);
+      expect(find.text('Done: 2 of 2'), findsOneWidget);
+      await t.pump(const Duration(seconds: 4));
+      // a number: what Uncle Heng owes, asked first with the money
+      await t.enterText(find.byKey(const ValueKey('bizi-input')), 'Uncle Heng owes 10\$');
+      await _settle(t);
+      expect(find.text('Owes \$10.00'), findsOneWidget);
+      await t.testTextInput.receiveAction(TextInputAction.search);
+      await _settle(t);
+      expect(find.text('Add a debt of \$10.00 for Uncle Heng?'), findsOneWidget);
+      await t.tap(find.byKey(const ValueKey('bizi-yes')));
+      await _settle(t);
+      expect(api.calls.any((c) => c == 'POST /api/user/businesses/b3/debt/customers/d1/entries {kind: debt, amount: 10, currency: USD}'), isTrue, reason: api.calls.where((c) => c.contains('debt')).join('\n'));
+      await t.pump(const Duration(seconds: 4));
+      // nothing Bizi can do that to
+      await t.enterText(find.byKey(const ValueKey('bizi-input')), 'check out Uncle Heng');
+      await _settle(t);
+      expect(find.byKey(const ValueKey('bizi-act-none')), findsOneWidget);
 
       // nothing found for a question → the BizHub team
       await t.enterText(find.byKey(const ValueKey('bizi-input')), '');

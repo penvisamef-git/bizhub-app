@@ -93,6 +93,7 @@ class _Row {
   final HelpHit? help;
   final Json? tip; // a thing not set up yet (opens its how-to for that business)
   final Json? week; // last week's report
+  final Json? raw; // the search result (or business) as the server sent it — what Bizi commands need
   final VoidCallback? run;
   const _Row({
     required this.group,
@@ -113,6 +114,7 @@ class _Row {
     this.help,
     this.tip,
     this.week,
+    this.raw,
     this.run,
   });
   Json toRecent() => {
@@ -126,6 +128,7 @@ class _Row {
 }
 
 const _kindIcon = <String, IconData>{
+  'room': LucideIcons.bedDouble,
   'coin_order': LucideIcons.coins,
   'chat': LucideIcons.messageCircle,
   'app_error': LucideIcons.bug,
@@ -169,7 +172,9 @@ class _BiziPageState extends ConsumerState<BiziPage> {
   bool _typing = false;
   bool _offline = false;
   bool _settings = false; // the gear: Bizi settings instead of the list
-  ({String row, BiziAction a, String title})? _confirm; // a quick action waiting for Yes / No
+  ({String row, BiziAction a, _Row r})? _confirm; // a command waiting for Yes / No
+  List<(BiziAction, _Row)>? _confirmAll; // the same command for several things at once
+  String _lastTerm = '';
   bool _acting = false;
   bool _listening = false;
 
@@ -204,34 +209,71 @@ class _BiziPageState extends ConsumerState<BiziPage> {
     }
   }
 
-  List<BiziAction> _actionsOf(_Row r) =>
-      r.business == null ? const [] : actionsOf(category: str(r.business!['category']), kind: r.kind, id: r.id, businessId: str(r.business!['_id']), status: r.status, flag: r.flag);
-  BiziAction? _primaryOf(_Row r) {
-    final v = verbOf(_term);
-    if (v == null) return null;
-    return _actionsOf(r).where((a) => a.key == v.key).firstOrNull;
+  // Bizi commands: what "price coke 1.5" asks for, and what each result can do
+  BiziCommand? get _cmd => widget.admin || isQuestion(_term) ? null : commandOf(_term);
+  List<BiziAction> _actionsOf(_Row r, BiziCommand? cmd) {
+    final raw = r.raw;
+    if (widget.admin || raw == null) return const [];
+    return r.kind == 'business' ? bizActionsOf(raw, cmd) : actionsOf(raw, cmd);
   }
+
+  BiziAction? _primaryOf(_Row r, BiziCommand? cmd) => cmd == null ? null : _actionsOf(r, cmd).where((a) => a.answers(cmd)).firstOrNull;
+  String _title(_Row r) => [r.title, if (r.kind != 'business' && r.kind != 'room' && str(r.raw?['business']).isNotEmpty) '(${r.raw!['business']})'].join(' ');
+  Map<String, Object?> _vars(BiziAction a, _Row r) {
+    final leave = r.raw?['leave'];
+    return {
+      't': r.title,
+      'v': a.v == null ? '' : (a.cur.isNotEmpty || a.key == 'price' ? biziMoney(a.v, a.cur.isNotEmpty ? a.cur : r.cur) : (a.v == a.v!.roundToDouble() ? '${a.v!.toInt()}' : '${a.v}')),
+      'd': leave is Map ? {str(leave['from']), str(leave['to'])}.join(' → ') : '',
+    };
+  }
+
+  String _err(Object e) => '$e'.replaceFirst(RegExp(r'^\w*Exception:\s*'), '');
 
   Future<void> _runConfirm() async {
     final c = _confirm;
-    if (c == null || _acting) return;
+    final many = _confirmAll;
+    if ((c == null && many == null) || _acting) return;
     final lang = ref.read(tProvider).lang;
     setState(() => _acting = true);
     final api = ref.read(apiProvider);
-    final path = '${Api.user}${c.a.path}';
+    Future<void> run(BiziAction a) {
+      final path = '${Api.user}${a.path}';
+      return a.method == 'put' ? api.put(path, a.body) : api.post(path, a.body);
+    }
+
     try {
-      await (c.a.method == 'put' ? api.put(path, c.a.body) : api.post(path, c.a.body));
-      if (!mounted) return;
-      toast(context, biziT(lang, 'actOk.${c.a.key}', {'t': c.title}));
-      setState(() => _confirm = null);
-      _changed(); // the result again, as it is now
+      if (many != null) {
+        var ok = 0;
+        final errs = <String>[];
+        for (final (a, r) in many) {
+          try {
+            await run(a);
+            ok++;
+          } catch (e) {
+            errs.add('${_title(r)}: ${_err(e)}');
+          }
+        }
+        if (!mounted) return;
+        final n = many.length;
+        toast(context, errs.isEmpty ? biziT(lang, 'actAllOk', {'ok': ok, 'n': n}) : biziT(lang, 'actAllSome', {'ok': ok, 'n': n, 'err': errs.join(' · ')}));
+      } else {
+        await run(c!.a);
+        if (!mounted) return;
+        toast(context, biziT(lang, 'actOk.${c.a.key}', _vars(c.a, c.r)));
+      }
+      _changed(); // the results again, as they are now
       _reloadBrief();
     } catch (e) {
-      if (!mounted) return;
-      toast(context, '$e');
-      setState(() => _confirm = null);
+      if (mounted) toast(context, _err(e));
     } finally {
-      if (mounted) setState(() => _acting = false);
+      if (mounted) {
+        setState(() {
+          _confirm = null;
+          _confirmAll = null;
+          _acting = false;
+        });
+      }
     }
   }
 
@@ -276,8 +318,15 @@ class _BiziPageState extends ConsumerState<BiziPage> {
   // ask the server a moment after the typing stops; an older answer never replaces a newer one
   void _changed() {
     final term = _term;
+    final lookFor = _cmd?.rest ?? term; // "#12 paid" looks for "#12" (the words that say what to do are not searched)
     _wait?.cancel();
-    if (term.length < 2 && !RegExp(r'^#?\d+$').hasMatch(term)) {
+    if (term != _lastTerm) {
+      // a new text: a question waiting for Yes / No was about the old one (moving the cursor keeps it)
+      _confirm = null;
+      _confirmAll = null;
+    }
+    _lastTerm = term;
+    if (lookFor.length < 2 && !RegExp(r'^#?\d+$').hasMatch(lookFor)) {
       setState(() {
         _apiQ = term;
         _api = const [];
@@ -297,8 +346,7 @@ class _BiziPageState extends ConsumerState<BiziPage> {
         _busy = true;
       });
       try {
-        // "#12 paid" looks for "#12" (the words that say what to do are not searched)
-        final d = obj((await ref.read(apiProvider).get(widget.admin ? '${Api.admin}/bizi/search' : '${Api.user}/search', {'q': verbOf(term)?.rest ?? term}))['data']);
+        final d = obj((await ref.read(apiProvider).get(widget.admin ? '${Api.admin}/bizi/search' : '${Api.user}/search', {'q': lookFor}))['data']);
         if (!mounted || n != _ask) return;
         setState(() {
           _offline = false;
@@ -342,9 +390,9 @@ class _BiziPageState extends ConsumerState<BiziPage> {
   }
 
   void _go(_Row r) {
-    final primary = _primaryOf(r);
+    final primary = _primaryOf(r, _cmd);
     if (primary != null) {
-      setState(() => _confirm = (row: '${r.group}:${r.id}', a: primary, title: r.title));
+      setState(() => _confirm = (row: '${r.group}:${r.id}', a: primary, r: r));
       return;
     }
     if (r.help != null || r.week != null) {
@@ -393,6 +441,8 @@ class _BiziPageState extends ConsumerState<BiziPage> {
     final list = _businesses();
     final brief = ref.watch(biziBriefProvider);
     final asked = isQuestion(term);
+    final cmd = _cmd;
+    final cws = cmd == null ? ws : words(cmd.rest);
 
     _Row asBiz(Json b) => _Row(
       group: 'businesses',
@@ -401,6 +451,7 @@ class _BiziPageState extends ConsumerState<BiziPage> {
       title: str(b['name']),
       sub: [typeName(str(b['category']), lang), if (b['shared'] == true) x('shared')].join(' · '),
       business: b,
+      raw: {'business_id': b['_id'], 'category': b['category'], 'role': b['shared'] == true ? (b['role'] ?? 'view') : 'owner'},
       logo: str(b['photo']).isNotEmpty ? str(b['photo']) : str(b['logo_url']),
     );
 
@@ -507,7 +558,15 @@ class _BiziPageState extends ConsumerState<BiziPage> {
       for (final h in findHelp(term, list: widget.admin ? adminHelpList : null)) {
         all.add(_Row(group: 'help', kind: 'help', id: h.id, title: h.q(lang), sub: x('helpSub'), help: h, icon: LucideIcons.lifeBuoy));
       }
-      for (final b in list.where((b) => ws.every((w) => hit(w, '${b['name']} ${typeName(str(b['category']), 'en')} ${typeName(str(b['category']), 'km')}'.toLowerCase()) > 0)).take(6)) {
+      bool named(Json b) => cws.every((w) => hit(w, '${b['name']} ${typeName(str(b['category']), 'en')} ${typeName(str(b['category']), 'km')}'.toLowerCase()) > 0);
+      final kinds = cmd == null ? null : bizKinds[cmd.key];
+      // "close", "publish": every business it can be for (or the one named)
+      final bizs = kinds != null
+          ? list.where((b) => kinds.contains(b['category']) && (cws.isEmpty || named(b) || cws.every((w) => hit(w, 'store shop website site ហាង គេហទំព័រ') > 0)))
+          : cws.isEmpty
+          ? const <Json>[]
+          : list.where(named).take(6);
+      for (final b in bizs) {
         all.add(asBiz(b));
       }
       if (_apiQ == term) {
@@ -527,6 +586,7 @@ class _BiziPageState extends ConsumerState<BiziPage> {
               flag: str(it['flag']),
               money: it['money'],
               cur: str(it['cur']),
+              raw: it,
             ),
           );
         }
@@ -596,6 +656,44 @@ class _BiziPageState extends ConsumerState<BiziPage> {
         ),
       );
     }
+    // the same command for several things at once ("coke sold out" in 3 shops)
+    final seen = <String>{};
+    final targets = [
+      for (final r in rows)
+        if (_primaryOf(r, cmd) case final a? when seen.add('${r.kind}:${r.id}')) (a, r),
+    ];
+    if (targets.length >= 2) {
+      final many = _confirmAll;
+      final (a0, r0) = targets.first;
+      children.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: _ActsBar(
+            key: const ValueKey('bizi-all'),
+            lang: lang,
+            indent: 4,
+            acts: [a0],
+            label: (_) => '${x('act.${a0.key}', _vars(a0, r0))} · ${x('actAll', {'n': targets.length})}',
+            primary: a0.key,
+            asking: many == null
+                ? null
+                : x('actAllAsk', {
+                    'act': x('act.${many.first.$1.key}', _vars(many.first.$1, many.first.$2)),
+                    'n': many.length,
+                    'list': many.take(4).map((t) => _title(t.$2)).join(', ') + (many.length > 4 ? '…' : ''),
+                  }),
+            busy: _acting,
+            onPick: (_) => setState(() {
+              _confirm = null;
+              _confirmAll = targets;
+            }),
+            onYes: _runConfirm,
+            onNo: () => setState(() => _confirmAll = null),
+            allKey: true,
+          ),
+        ),
+      );
+    }
     String last = '';
     var started = false;
     for (final r in rows) {
@@ -618,20 +716,23 @@ class _BiziPageState extends ConsumerState<BiziPage> {
       }
       final open = (r.help != null || r.week != null) && openId == r.id;
       children.add(_RowTile(row: r, open: open, lang: lang, statusWord: r.status.isEmpty ? '' : biziT(lang, 'status.${r.status}'), flagWord: r.flag.isEmpty ? '' : x(r.flag), onTap: () => _go(r)));
-      final acts = _actionsOf(r);
+      final acts = _actionsOf(r, cmd);
       if (acts.isNotEmpty) {
         final key = '${r.group}:${r.id}';
         final asking = _confirm?.row == key ? _confirm : null;
-        final primary = _primaryOf(r)?.key;
         children.add(
           _ActsBar(
             key: ValueKey('bizi-acts-$key'),
             lang: lang,
             acts: acts,
-            primary: primary,
-            asking: asking == null ? null : (asking.a, asking.title),
+            label: (a) => x('act.${a.key}', _vars(a, r)),
+            primary: _primaryOf(r, cmd)?.key,
+            asking: asking == null ? null : x('actAsk.${asking.a.key}', _vars(asking.a, asking.r)),
             busy: _acting,
-            onPick: (a) => setState(() => _confirm = (row: key, a: a, title: r.title)),
+            onPick: (a) => setState(() {
+              _confirmAll = null;
+              _confirm = (row: key, a: a, r: r);
+            }),
             onYes: _runConfirm,
             onNo: () => setState(() => _confirm = null),
           ),
@@ -659,6 +760,15 @@ class _BiziPageState extends ConsumerState<BiziPage> {
         Padding(
           padding: const EdgeInsets.all(16),
           child: Text(x('busy'), style: TextStyle(color: c.muted)),
+        ),
+      );
+    }
+    if (cmd != null && !waiting && _apiQ == term && rows.isNotEmpty && targets.isEmpty) {
+      children.add(
+        Padding(
+          key: const ValueKey('bizi-act-none'),
+          padding: const EdgeInsets.fromLTRB(4, 12, 4, 0),
+          child: Text(x('actNone'), style: TextStyle(color: c.muted, fontSize: 13.5)),
         ),
       );
     }
@@ -744,7 +854,7 @@ class _BiziPageState extends ConsumerState<BiziPage> {
                               textInputAction: TextInputAction.search,
                               autocorrect: false,
                               onSubmitted: (_) {
-                                if (_confirm != null) {
+                                if (_confirm != null || _confirmAll != null) {
                                   _runConfirm();
                                 } else if (rows.isNotEmpty) {
                                   _go(rows.first);
@@ -1136,12 +1246,28 @@ class _WeekCard extends StatelessWidget {
 class _ActsBar extends StatelessWidget {
   final String lang;
   final List<BiziAction> acts;
+  final String Function(BiziAction) label;
   final String? primary;
-  final (BiziAction, String)? asking;
+  final String? asking; // the question, while it waits for Yes / No
   final bool busy;
   final void Function(BiziAction) onPick;
   final VoidCallback onYes, onNo;
-  const _ActsBar({super.key, required this.lang, required this.acts, required this.primary, required this.asking, required this.busy, required this.onPick, required this.onYes, required this.onNo});
+  final double indent;
+  final bool allKey; // the "do it for all" bar (its own test key)
+  const _ActsBar({
+    super.key,
+    required this.lang,
+    required this.acts,
+    required this.label,
+    required this.primary,
+    required this.asking,
+    required this.busy,
+    required this.onPick,
+    required this.onYes,
+    required this.onNo,
+    this.indent = 58,
+    this.allKey = false,
+  });
   @override
   Widget build(BuildContext context) {
     final c = context.c;
@@ -1164,16 +1290,16 @@ class _ActsBar extends StatelessWidget {
     final a = asking;
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
-      padding: EdgeInsets.fromLTRB(58, a == null ? 0 : 8, 8, a == null ? 4 : 10),
+      padding: EdgeInsets.fromLTRB(a == null ? indent : (indent < 20 ? 12 : indent), a == null ? 0 : 8, 8, a == null ? 4 : 10),
       decoration: a == null ? null : BoxDecoration(color: c.active, borderRadius: BorderRadius.circular(14)),
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: a == null
-            ? [for (final x in acts) chip(biziT(lang, 'act.${x.key}'), () => onPick(x), strong: x.key == primary, key: ValueKey('bizi-act-${x.key}'))]
+            ? [for (final x in acts) chip(label(x), () => onPick(x), strong: x.key == primary, solid: allKey, key: ValueKey(allKey ? 'bizi-act-all' : 'bizi-act-${x.key}'))]
             : [
-                Text(biziT(lang, 'actAsk.${a.$1.key}', {'t': a.$2}), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                Text(a, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                 chip(biziT(lang, 'yes'), busy ? null : onYes, solid: true, key: const ValueKey('bizi-yes')),
                 chip(biziT(lang, 'no'), onNo, key: const ValueKey('bizi-no')),
               ],
