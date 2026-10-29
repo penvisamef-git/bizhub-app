@@ -24,6 +24,7 @@ import 'bizi_face.dart';
 import 'bizi_find.dart';
 import 'bizi_settings.dart';
 import 'bizi_telegram.dart';
+import 'bizi_voice.dart';
 
 // Bizi's search screen (/o/bizi) — the same box as ⌘K on the website:
 //   here, without the server: the sections of every business I can open, the how-tos ("how do I pair a POS?"),
@@ -146,6 +147,38 @@ class _BiziPageState extends ConsumerState<BiziPage> {
   bool _settings = false; // the gear: Bizi settings instead of the list
   ({String row, BiziAction a, String title})? _confirm; // a quick action waiting for Yes / No
   bool _acting = false;
+  bool _listening = false;
+
+  // voice: the phone's own speech-to-text; the words go into the box as they come
+  Future<void> _voice() async {
+    final lang = ref.read(tProvider).lang;
+    if (_listening) {
+      await BiziVoice.instance.stop();
+      if (mounted) setState(() => _listening = false);
+      return;
+    }
+    setState(() => _listening = true);
+    final ok = await BiziVoice.instance.start(
+      lang,
+      (words, done) {
+        if (!mounted) return;
+        if (words.isNotEmpty) {
+          _q.value = TextEditingValue(
+            text: words,
+            selection: TextSelection.collapsed(offset: words.length),
+          );
+        }
+        if (done) setState(() => _listening = false);
+      },
+      onEnd: () {
+        if (mounted) setState(() => _listening = false);
+      },
+    );
+    if (!ok && mounted) {
+      setState(() => _listening = false);
+      toast(context, biziT(lang, 'voiceNo'));
+    }
+  }
 
   List<BiziAction> _actionsOf(_Row r) =>
       r.business == null ? const [] : actionsOf(category: str(r.business!['category']), kind: r.kind, id: r.id, businessId: str(r.business!['_id']), status: r.status, flag: r.flag);
@@ -206,6 +239,7 @@ class _BiziPageState extends ConsumerState<BiziPage> {
 
   @override
   void dispose() {
+    if (_listening) BiziVoice.instance.stop();
     _wait?.cancel();
     _q.dispose();
     _focus.dispose();
@@ -651,7 +685,7 @@ class _BiziPageState extends ConsumerState<BiziPage> {
                     height: 48,
                     decoration: BoxDecoration(color: c.card, shape: BoxShape.circle, boxShadow: c.cardShadow),
                     alignment: Alignment.center,
-                    child: BiziFace(mood: _typing ? BiziMood.listening : mood, size: 40),
+                    child: BiziFace(mood: _typing || _listening ? BiziMood.listening : mood, size: 40),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -686,16 +720,33 @@ class _BiziPageState extends ConsumerState<BiziPage> {
                               decoration: InputDecoration(
                                 isCollapsed: true,
                                 border: InputBorder.none,
-                                hintText: x('ph'),
+                                hintText: _listening ? x('voiceOn') : x('ph'),
                                 hintStyle: TextStyle(color: c.muted, fontWeight: FontWeight.w500),
                               ),
                             ),
                           ),
-                          if (_q.text.isNotEmpty)
+                          if (_q.text.isNotEmpty && !_listening)
                             GestureDetector(
                               onTap: () => _q.clear(),
                               child: Icon(LucideIcons.circleX, size: 18, color: c.muted),
                             ),
+                          const SizedBox(width: 6),
+                          Semantics(
+                            button: true,
+                            toggled: _listening,
+                            label: x('voice'),
+                            child: GestureDetector(
+                              key: const ValueKey('bizi-mic'),
+                              onTap: _voice,
+                              child: Container(
+                                width: 34,
+                                height: 34,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(color: _listening ? c.dangerBg : c.chip, shape: BoxShape.circle),
+                                child: Icon(LucideIcons.mic, size: 18, color: _listening ? c.danger : c.brandInk),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),

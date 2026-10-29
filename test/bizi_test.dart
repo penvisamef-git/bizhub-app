@@ -10,6 +10,7 @@ import 'package:bizhub_admin/features/bizi/bizi_data.dart';
 import 'package:bizhub_admin/features/bizi/bizi_face.dart';
 import 'package:bizhub_admin/features/bizi/bizi_find.dart';
 import 'package:bizhub_admin/features/bizi/bizi_page.dart';
+import 'package:bizhub_admin/features/bizi/bizi_voice.dart';
 import 'package:bizhub_admin/features/common/shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -205,6 +206,26 @@ class _Api extends Api {
     if (path.endsWith('/bizi/telegram')) tgOn = false;
     return _ok({});
   }
+}
+
+// the phone's speech-to-text, faked: says the words one after the other
+class _Voice implements BiziVoice {
+  final List<String> say;
+  bool ok;
+  String? lang;
+  _Voice(this.say, {this.ok = true});
+  @override
+  Future<bool> start(String lang, void Function(String words, bool done) onWords, {void Function()? onEnd}) async {
+    this.lang = lang;
+    if (!ok) return false;
+    for (var i = 0; i < say.length; i++) {
+      Future<void>.delayed(Duration(milliseconds: 300 * (i + 1)), () => onWords(say[i], i == say.length - 1));
+    }
+    return true;
+  }
+
+  @override
+  Future<void> stop() async {}
 }
 
 class _Me extends SessionNotifier {
@@ -489,6 +510,25 @@ void main() {
         expect(find.byKey(const ValueKey('bizi-input')), findsOneWidget);
       }
 
+      // voice: the words go into the box, a Khmer question opens its answer
+      if (lang == 'km') {
+        BiziVoice.instance = _Voice(['ធ្វើម៉េច', 'ធ្វើម៉េចភ្ជាប់ POS']);
+        await t.tap(find.byKey(const ValueKey('bizi-mic')));
+        await t.pump(const Duration(milliseconds: 350));
+        expect(find.text('ធ្វើម៉េច'), findsOneWidget);
+        await t.pump(const Duration(milliseconds: 400));
+        await _settle(t);
+        expect((BiziVoice.instance as _Voice).lang, 'km');
+        expect(find.byKey(const ValueKey('bizi-help')), findsOneWidget);
+        await _shot(t, 'voice-km');
+        BiziVoice.instance = _Voice([], ok: false);
+        await t.tap(find.byKey(const ValueKey('bizi-mic')));
+        await _settle(t);
+        expect(find.textContaining('មិនអាចស្វែងរកដោយសំឡេង'), findsOneWidget);
+        await t.pump(const Duration(seconds: 4));
+        await t.enterText(find.byKey(const ValueKey('bizi-input')), '');
+        await _settle(t);
+      }
       // a question opens its answer by itself
       await t.enterText(find.byKey(const ValueKey('bizi-input')), lang == 'km' ? 'ធ្វើម៉េចភ្ជាប់ POS' : 'how do I pair a POS?');
       await _settle(t);

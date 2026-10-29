@@ -73,7 +73,9 @@
 	<key>NSCameraUsageDescription</key>
 	<string>BizHub uses the camera to scan QR codes and barcodes (log in on the website, product barcodes, top-up cards) and to take photos of your products, menu, rooms or profile.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>BizHub uses the microphone only while you hold the record button to send a voice message in Chat with BizHub.</string>
+	<string>BizHub uses the microphone only while you hold the record button to send a voice message in Chat with BizHub, or after you tap the microphone in Bizi's search to search by voice.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>BizHub turns what you say into text only after you tap the microphone in Bizi's search, so you can search by voice.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
