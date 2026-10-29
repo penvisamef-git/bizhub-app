@@ -22,6 +22,12 @@ String biziT(String lang, String key, [Map<String, Object?> vars = const {}]) {
   return s;
 }
 
+// a list of words (the day names)
+List<String> biziList(String lang, String key) {
+  final v = _text(lang)[key] ?? _text('en')[key];
+  return v is List ? v.map((e) => '$e').toList() : const [];
+}
+
 // is there a text for this key in this language (no English stand-in)?
 bool biziHas(String lang, String key) {
   Object? v = _text(lang);

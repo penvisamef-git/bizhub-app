@@ -20,6 +20,7 @@ import '../team/team_data.dart';
 import 'bizi_bubble.dart';
 import 'bizi_face.dart';
 import 'bizi_find.dart';
+import 'bizi_settings.dart';
 
 // Bizi's search screen (/o/bizi) — the same box as ⌘K on the website:
 //   here, without the server: the sections of every business I can open, the how-tos ("how do I pair a POS?"),
@@ -66,6 +67,8 @@ class _Row {
   final String status, flag, logo, cur;
   final Object? money;
   final HelpHit? help;
+  final Json? tip; // a thing not set up yet (opens its how-to for that business)
+  final Json? week; // last week's report
   final VoidCallback? run;
   const _Row({
     required this.group,
@@ -84,6 +87,8 @@ class _Row {
     this.cur = '',
     this.money,
     this.help,
+    this.tip,
+    this.week,
     this.run,
   });
   Json toRecent() => {
@@ -99,6 +104,8 @@ class _Row {
 const _kindIcon = <String, IconData>{
   'alert': LucideIcons.bellRing,
   'help': LucideIcons.lifeBuoy,
+  'tip': LucideIcons.wrench,
+  'week': LucideIcons.calendarRange,
   'product': LucideIcons.package,
   'order': LucideIcons.receiptText,
   'stay': LucideIcons.bedDouble,
@@ -132,6 +139,24 @@ class _BiziPageState extends ConsumerState<BiziPage> {
   bool _busy = false;
   bool _typing = false;
   bool _offline = false;
+  bool _settings = false; // the gear: Bizi settings instead of the list
+  final Set<String> _hidden = {}; // tips put off ("Not now") while the screen is open
+
+  // ask for the brief again (after settings change / a tip is put off)
+  Future<void> _reloadBrief() async {
+    try {
+      final b = obj((await ref.read(apiProvider).get('${Api.user}/bizi/brief'))['data']);
+      if (mounted) ref.read(biziBriefProvider.notifier).state = b;
+    } catch (_) {}
+  }
+
+  void _snooze(Json tip) {
+    final lang = ref.read(tProvider).lang;
+    setState(() => _hidden.add('${tip['key']}:${tip['business_id']}'));
+    toast(context, biziT(lang, 'snoozed'));
+    ref.read(apiProvider).post('${Api.user}/bizi/snooze', {'key': tip['key'], 'business_id': tip['business_id']}).then((_) => _reloadBrief()).catchError((_) => <String, dynamic>{});
+  }
+
   String? _openQ; // the how-to opened (or closed: '') for these words
   String _openId = '';
 
@@ -218,11 +243,11 @@ class _BiziPageState extends ConsumerState<BiziPage> {
   }
 
   void _go(_Row r) {
-    if (r.help != null) {
+    if (r.help != null || r.week != null) {
       setState(() {
-        final open = _currentOpen(isQuestion(_term), r.help!.id);
+        final open = _currentOpen(isQuestion(_term), r.id);
         _openQ = _term;
-        _openId = open == r.help!.id ? '' : r.help!.id;
+        _openId = open == r.id ? '' : r.id;
       });
       return;
     }
@@ -294,6 +319,42 @@ class _BiziPageState extends ConsumerState<BiziPage> {
             business: b ?? (str(a['business_id']).isEmpty ? null : {'_id': a['business_id'], 'name': a['business'], 'category': a['category']}),
             tab: str(a['tab']),
             route: str(a['href']).isNotEmpty ? appRoute(str(a['href'])) : (str(a['business_id']).isEmpty ? '/o/home' : ''),
+          ),
+        );
+      }
+      // things not set up yet: each opens its how-to, with that business's section
+      for (final tp in objs(brief?['tips'])) {
+        if (_hidden.contains('${tp['key']}:${tp['business_id']}')) continue;
+        final a = helpList.where((h) => h['id'] == tp['help']).firstOrNull;
+        rows.add(
+          _Row(
+            group: 'tips',
+            kind: 'tip',
+            id: 'tip:${tp['key']}:${tp['business_id']}',
+            title: x('tips.${tp['key']}'),
+            sub: str(tp['business']),
+            icon: LucideIcons.wrench,
+            help: a == null ? null : HelpHit(a, 0),
+            tip: tp,
+          ),
+        );
+      }
+      // last week's report
+      final wk = brief?['weekly'] is Map ? obj(brief!['weekly']) : null;
+      if (wk != null) {
+        final pct = wk['change_pct'];
+        rows.add(
+          _Row(
+            group: 'week',
+            kind: 'week',
+            id: 'week',
+            title: [
+              x('weekTotal', {'money': biziMoney(wk['total'], str(wk['currency']))}),
+              if (pct is num) x('weekChange', {'pct': pctOf(pct)}),
+            ].join(' · '),
+            sub: weekSub(wk, lang),
+            icon: LucideIcons.calendarRange,
+            week: wk,
           ),
         );
       }
@@ -380,6 +441,8 @@ class _BiziPageState extends ConsumerState<BiziPage> {
     String head(String g) => switch (g) {
       'smart' => '${x('groups.smart')} · ${(_apiQ == term ? _smart : const <String>[]).map((k) => biziT(lang, 'smart.$k')).join(' · ')}',
       'says' => x('says'),
+      'tips' => x('tipsHead'),
+      'week' => x('weekHead'),
       'recent' => x('recent'),
       'businesses' when term.isEmpty => x('quick'),
       _ => x('groups.$g'),
@@ -425,7 +488,7 @@ class _BiziPageState extends ConsumerState<BiziPage> {
       }
       if (r.group != last) {
         last = r.group;
-        final hot = r.group == 'smart' || r.group == 'says' || r.group == 'help';
+        final hot = const {'smart', 'says', 'help', 'tips', 'week'}.contains(r.group);
         children.add(
           Padding(
             padding: const EdgeInsets.fromLTRB(4, 16, 4, 6),
@@ -436,14 +499,18 @@ class _BiziPageState extends ConsumerState<BiziPage> {
           ),
         );
       }
-      final open = r.help != null && openId == r.help!.id;
+      final open = (r.help != null || r.week != null) && openId == r.id;
       children.add(_RowTile(row: r, open: open, lang: lang, statusWord: r.status.isEmpty ? '' : biziT(lang, 'status.${r.status}'), flagWord: r.flag.isEmpty ? '' : x(r.flag), onTap: () => _go(r)));
-      if (open) {
+      if (open && r.week != null) children.add(_WeekCard(wk: r.week!, lang: lang));
+      if (open && r.help != null) {
+        final tp = r.tip;
         children.add(
           _HelpCard(
             hit: r.help!,
             lang: lang,
             list: list,
+            to: tp == null ? null : HelpTarget(business: {'_id': tp['business_id'], 'name': tp['business'], 'category': tp['category']}, tab: str(tp['tab'])),
+            onLater: tp == null ? null : () => _snooze(tp),
             onOpen: (target) => _openTarget(context, business: target.business, tab: target.tab, route: target.route),
           ),
         );
@@ -561,19 +628,26 @@ class _BiziPageState extends ConsumerState<BiziPage> {
                     ),
                   ),
                   const SizedBox(width: 8),
+                  RoundBtn(LucideIcons.settings2, key: const ValueKey('bizi-gear'), size: 44, tip: x('settings'), onTap: () => setState(() => _settings = !_settings)),
+                  const SizedBox(width: 8),
                   RoundBtn(LucideIcons.x, size: 44, tip: x('close'), onTap: () => context.pop()),
                 ],
               ),
             ),
-            Expanded(
-              child: ListView(
-                key: const ValueKey('bizi-list'),
-                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: EdgeInsets.fromLTRB(12, 0, 12, 24 + MediaQuery.of(context).padding.bottom),
-                children: children,
+            if (_settings)
+              Expanded(
+                child: BiziSettingsView(onBack: () => setState(() => _settings = false), onChanged: _reloadBrief),
               ),
-            ),
-            if (term.isEmpty)
+            if (!_settings)
+              Expanded(
+                child: ListView(
+                  key: const ValueKey('bizi-list'),
+                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: EdgeInsets.fromLTRB(12, 0, 12, 24 + MediaQuery.of(context).padding.bottom),
+                  children: children,
+                ),
+              ),
+            if (term.isEmpty && !_settings)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
                 child: Text(
@@ -647,11 +721,13 @@ class _RowTile extends StatelessWidget {
     final c = context.c;
     final warn = row.level == 'warn';
     final icon = row.kind == 'action' || row.group == 'recent' ? row.icon : (_kindIcon[row.kind] ?? row.icon);
-    final (bg, fg) = row.kind == 'help'
-        ? (c.dark ? const Color(0x2E3B82F6) : const Color(0xFFE8F1FF), c.dark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8))
-        : warn
-        ? (c.dangerBg, c.danger)
-        : (row.kind == 'alert' || row.kind == 'action' || row.kind == 'app' || row.kind == 'order' || row.kind == 'stay' ? c.active : c.chip, c.brandInk);
+    final (bg, fg) = switch (row.kind) {
+      'help' => (c.dark ? const Color(0x2E3B82F6) : const Color(0xFFE8F1FF), c.dark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8)),
+      'tip' => (c.dark ? const Color(0x29EAB308) : const Color(0xFFFFF4D6), c.dark ? const Color(0xFFFCD34D) : const Color(0xFF8A5A00)),
+      _ when warn => (c.dangerBg, c.danger),
+      'alert' || 'action' || 'app' || 'order' || 'stay' || 'week' => (c.active, c.brandInk),
+      _ => (c.chip, c.brandInk),
+    };
     final money = row.money == null || '${row.money}'.isEmpty ? '' : biziMoney(row.money, row.cur.isEmpty ? 'USD' : row.cur);
     return Material(
       color: open ? c.active : Colors.transparent,
@@ -706,7 +782,7 @@ class _RowTile extends StatelessWidget {
               if (flagWord.isNotEmpty) ...[const SizedBox(width: 6), Chip2(flagWord, tone: Tone.warn)],
               if (statusWord.isNotEmpty && statusWord != 'status.${row.status}') ...[const SizedBox(width: 6), Chip2(statusWord)],
               if (money.isNotEmpty) ...[const SizedBox(width: 8), Text(money, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5))],
-              if (row.kind == 'help') ...[const SizedBox(width: 4), Icon(open ? LucideIcons.chevronUp : LucideIcons.chevronDown, size: 18, color: c.muted)],
+              if (row.kind == 'help' || row.kind == 'tip' || row.kind == 'week') ...[const SizedBox(width: 4), Icon(open ? LucideIcons.chevronUp : LucideIcons.chevronDown, size: 18, color: c.muted)],
             ],
           ),
         ),
@@ -721,7 +797,9 @@ class _HelpCard extends StatelessWidget {
   final String lang;
   final List<Json> list;
   final void Function(HelpTarget) onOpen;
-  const _HelpCard({required this.hit, required this.lang, required this.list, required this.onOpen});
+  final HelpTarget? to; // a tip: that business, not my first one of the type
+  final VoidCallback? onLater; // a tip: "Not now"
+  const _HelpCard({required this.hit, required this.lang, required this.list, required this.onOpen, this.to, this.onLater});
   @override
   Widget build(BuildContext context) {
     final c = context.c;
@@ -732,7 +810,7 @@ class _HelpCard extends StatelessWidget {
       final store = !kIsWeb && Platform.isIOS ? 'App Store' : 'Google Play';
       steps = (_appWords[lang]?['storeSteps'] ?? _appWords['en']!['storeSteps']!).map((s) => s.replaceAll('{store}', store)).toList();
     }
-    final to = targetOf(hit.a, list);
+    final to = this.to ?? targetOf(hit.a, list);
     return Container(
       key: const ValueKey('bizi-help'),
       margin: const EdgeInsets.fromLTRB(8, 4, 8, 10),
@@ -780,20 +858,99 @@ class _HelpCard extends StatelessWidget {
                   small: true,
                   onTap: () => onOpen(to),
                 ),
-              TextButton.icon(
-                onPressed: () => onOpen(const HelpTarget(route: '/o/support')),
-                icon: Icon(LucideIcons.messageCircle, size: 16, color: c.brandInk),
-                label: Text(
-                  x('helpAsk'),
-                  style: TextStyle(color: c.brandInk, fontWeight: FontWeight.w700, fontSize: 13),
+              if (onLater != null)
+                TextButton(
+                  key: const ValueKey('bizi-later'),
+                  onPressed: onLater,
+                  child: Text(
+                    x('notNow'),
+                    style: TextStyle(color: c.brandInk, fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
+                )
+              else
+                TextButton.icon(
+                  onPressed: () => onOpen(const HelpTarget(route: '/o/support')),
+                  icon: Icon(LucideIcons.messageCircle, size: 16, color: c.brandInk),
+                  label: Text(
+                    x('helpAsk'),
+                    style: TextStyle(color: c.brandInk, fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
                 ),
-              ),
             ],
           ),
           if (to?.business != null)
             Padding(
               padding: const EdgeInsets.only(top: 2),
               child: Text(str(to!.business!['name']), style: TextStyle(color: c.muted, fontSize: 12)),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+String pctOf(num n) => '${n > 0 ? '+' : ''}$n%';
+String _dayOf(String day, String lang) => weekDay(day, lang);
+
+String weekSub(Json wk, String lang) {
+  final best = wk['best_day'] is Map ? obj(wk['best_day']) : null;
+  final top = objs(wk['top']);
+  return [
+    if (best != null) biziT(lang, 'weekBest', {'day': _dayOf(str(best['day']), lang), 'money': biziMoney(best['sales'], str(wk['currency']))}),
+    if (top.isNotEmpty) biziT(lang, 'weekTop', {'name': top.first['name'], 'qty': top.first['qty']}),
+  ].join(' · ');
+}
+
+// last week, opened: the money, the best day, the best sellers, which businesses went up / down
+List<String> weekLines(Json wk, String lang) {
+  final pct = wk['change_pct'];
+  final best = wk['best_day'] is Map ? obj(wk['best_day']) : null;
+  final top = objs(wk['top']);
+  return [
+    biziT(lang, 'weekTotal', {'money': biziMoney(wk['total'], str(wk['currency']))}) + (pct is num ? ' · ${biziT(lang, 'weekChange', {'pct': pctOf(pct)})}' : ''),
+    if (best != null) biziT(lang, 'weekBest', {'day': _dayOf(str(best['day']), lang), 'money': biziMoney(best['sales'], str(wk['currency']))}),
+    if (top.isNotEmpty) biziT(lang, 'weekTops', {'list': top.map((t) => '${t['name']} ×${t['qty']}').join(' · ')}),
+    for (final b in objs(wk['up'])) biziT(lang, 'weekUp', {'name': b['name'], 'pct': pctOf(b['change_pct'] as num)}),
+    for (final b in objs(wk['down'])) biziT(lang, 'weekDown', {'name': b['name'], 'pct': pctOf(b['change_pct'] as num)}),
+  ];
+}
+
+class _WeekCard extends StatelessWidget {
+  final Json wk;
+  final String lang;
+  const _WeekCard({required this.wk, required this.lang});
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return Container(
+      key: const ValueKey('bizi-week'),
+      margin: const EdgeInsets.fromLTRB(8, 4, 8, 10),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+      decoration: BoxDecoration(
+        color: c.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: c.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final l in weekLines(wk, lang))
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 7, right: 10),
+                    child: Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(color: c.brand, shape: BoxShape.circle),
+                    ),
+                  ),
+                  Expanded(child: Text(l, style: const TextStyle(fontSize: 14, height: 1.45))),
+                ],
+              ),
             ),
         ],
       ),

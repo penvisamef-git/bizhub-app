@@ -27,6 +27,9 @@ class _Api extends Api {
   _Api() : super(token: () => 't', onUnauthorized: () {});
   final calls = <String>[];
   num pulse = 3;
+  bool weekly = true;
+  final mute = <String>[];
+  final snoozed = <String>[];
   Json _ok(Object? data) => {'success': true, 'data': data};
 
   @override
@@ -49,8 +52,37 @@ class _Api extends Api {
           {'key': 'renewals', 'level': 'info', 'n': 1, 'href': '/app/licenses'},
         ],
         'mood': 'worried',
+        'tips': [
+          for (final t in [
+            {'key': 'tg_no_group', 'business_id': 'b1', 'business': 'Mekong Coffee Shop', 'category': 'tg_store', 'tab': 'share', 'help': 'tg_group'},
+            {'key': 'rest_no_tables', 'business_id': 'b2', 'business': 'Mekong Kitchen', 'category': 'restaurant', 'tab': 'tables', 'help': 'tables_qr'},
+          ])
+            if (!snoozed.contains('${t['key']}:${t['business_id']}')) t,
+        ],
+        'weekly': weekly
+            ? {
+                'week': '2026-10-19',
+                'from': '2026-10-19',
+                'to': '2026-10-25',
+                'currency': 'USD',
+                'total': 25,
+                'bills': 3,
+                'before': 20,
+                'change_pct': 25,
+                'best_day': {'day': '2026-10-21', 'sales': 18},
+                'top': [
+                  {'name': 'Khmer iced coffee', 'qty': 9, 'business': 'Mekong Coffee Shop'},
+                  {'name': 'Croissant', 'qty': 4, 'business': 'Mekong Coffee Shop'},
+                ],
+                'up': [
+                  {'id': 'b1', 'name': 'Mekong Coffee Shop', 'total': 25, 'before': 20, 'change_pct': 25},
+                ],
+                'down': [],
+              }
+            : null,
       });
     }
+    if (path.endsWith('/bizi/prefs')) return _ok(_prefs);
     if (path.endsWith('/search')) {
       final q = '${query?['q']}';
       if (q.contains('coffee') || q.contains('cofee')) {
@@ -59,7 +91,20 @@ class _Api extends Api {
           'smart': [],
           'fuzzy': q.contains('cofee'),
           'results': [
-            {'group': 'products', 'kind': 'product', 'id': 'p1', 'business_id': 'b1', 'business': 'Mekong Coffee Shop', 'category': 'tg_store', 'title': 'Khmer iced coffee', 'sub': 'Coffee', 'money': 2.5, 'cur': 'USD', 'tab': 'products', 'flag': 'sold_out'},
+            {
+              'group': 'products',
+              'kind': 'product',
+              'id': 'p1',
+              'business_id': 'b1',
+              'business': 'Mekong Coffee Shop',
+              'category': 'tg_store',
+              'title': 'Khmer iced coffee',
+              'sub': 'Coffee',
+              'money': 2.5,
+              'cur': 'USD',
+              'tab': 'products',
+              'flag': 'sold_out',
+            },
           ],
         });
       }
@@ -69,13 +114,57 @@ class _Api extends Api {
           'smart': ['new'],
           'fuzzy': false,
           'results': [
-            {'group': 'orders', 'kind': 'order', 'id': 'o1', 'business_id': 'b1', 'business': 'Mekong Coffee Shop', 'category': 'tg_store', 'title': '#12', 'sub': 'Emma Wilson', 'money': 6.5, 'cur': 'USD', 'tab': 'orders', 'status': 'new', 'smart': true},
+            {
+              'group': 'orders',
+              'kind': 'order',
+              'id': 'o1',
+              'business_id': 'b1',
+              'business': 'Mekong Coffee Shop',
+              'category': 'tg_store',
+              'title': '#12',
+              'sub': 'Emma Wilson',
+              'money': 6.5,
+              'cur': 'USD',
+              'tab': 'orders',
+              'status': 'new',
+              'smart': true,
+            },
           ],
         });
       }
       return _ok({'q': q, 'smart': [], 'fuzzy': false, 'results': []});
     }
     return _ok({});
+  }
+
+  Json get _prefs => {
+    'mute': mute,
+    'weekly': weekly,
+    'tg': {'connected': false},
+    'keys': {
+      'alerts': ['tg_new', 'waiting', 'sold_out', 'low_stock', 'renewals'],
+      'tips': ['tg_no_group', 'rest_no_tables'],
+    },
+  };
+
+  @override
+  Future<Json> put(String path, [Object? body]) async {
+    calls.add('PUT $path $body');
+    final b = Map<String, dynamic>.from(body as Map);
+    if (b['mute'] is List)
+      mute
+        ..clear()
+        ..addAll((b['mute'] as List).map((e) => '$e'));
+    if (b['weekly'] is bool) weekly = b['weekly'] as bool;
+    return _ok(_prefs);
+  }
+
+  @override
+  Future<Json> post(String path, [Object? body]) async {
+    calls.add('POST $path $body');
+    final b = Map<String, dynamic>.from(body as Map);
+    if (path.endsWith('/bizi/snooze')) snoozed.add('${b['key']}:${b['business_id']}');
+    return _ok({'days': 14});
   }
 }
 
@@ -85,7 +174,12 @@ class _Me extends SessionNotifier {
 }
 
 Widget _stub(String text) => Scaffold(
-  body: SafeArea(child: Padding(padding: const EdgeInsets.all(16), child: Text(text, key: const ValueKey('stub')))),
+  body: SafeArea(
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Text(text, key: const ValueKey('stub')),
+    ),
+  ),
 );
 
 Widget _app(_Api api, {String lang = 'en', bool dark = false, String start = '/o/home'}) {
@@ -95,10 +189,38 @@ Widget _app(_Api api, {String lang = 'en', bool dark = false, String start = '/o
       StatefulShellRoute.indexedStack(
         builder: (_, _, nav) => AppShell(nav: nav, admin: false),
         branches: [
-          StatefulShellBranch(routes: [GoRoute(path: '/o/home', builder: (_, _) => const Center(child: Text('HOME')))]),
-          StatefulShellBranch(routes: [GoRoute(path: '/o/business', builder: (_, _) => const Center(child: Text('BUSINESSES')))]),
-          StatefulShellBranch(routes: [GoRoute(path: '/o/wallet', builder: (_, _) => const Center(child: Text('WALLET')))]),
-          StatefulShellBranch(routes: [GoRoute(path: '/o/more', builder: (_, _) => const Center(child: Text('MORE')))]),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/o/home',
+                builder: (_, _) => const Center(child: Text('HOME')),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/o/business',
+                builder: (_, _) => const Center(child: Text('BUSINESSES')),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/o/wallet',
+                builder: (_, _) => const Center(child: Text('WALLET')),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/o/more',
+                builder: (_, _) => const Center(child: Text('MORE')),
+              ),
+            ],
+          ),
         ],
       ),
       GoRoute(path: '/o/bizi', builder: (_, _) => const BiziPage()),
@@ -110,7 +232,11 @@ Widget _app(_Api api, {String lang = 'en', bool dark = false, String start = '/o
   );
   return ProviderScope(
     overrides: [apiProvider.overrideWithValue(api), tProvider.overrideWithValue(T.of(lang)), sessionProvider.overrideWith(_Me.new)],
-    child: MaterialApp.router(debugShowCheckedModeBanner: false, theme: buildTheme(dark: dark, khmer: lang == 'km'), routerConfig: router),
+    child: MaterialApp.router(
+      debugShowCheckedModeBanner: false,
+      theme: buildTheme(dark: dark, khmer: lang == 'km'),
+      routerConfig: router,
+    ),
   );
 }
 
@@ -205,12 +331,16 @@ void main() {
     await _settle(t);
     expect(find.byKey(const ValueKey('bizi-bubble')), findsOneWidget);
     expect(find.descendant(of: find.byKey(const ValueKey('bizi-dot')), matching: find.text('2')), findsOneWidget); // 2 warnings
+    // a new week: last week's report comes first (once)
     expect(find.byKey(const ValueKey('bizi-note')), findsOneWidget);
-    expect(find.textContaining('Today so far: \$12.50'), findsOneWidget);
-    expect(find.text('3 things need you'), findsOneWidget);
+    expect(find.text('Last week'), findsOneWidget);
+    expect(find.textContaining('\$25.00 · +25% vs the week before'), findsOneWidget);
+    expect(find.text('Best day: Wed 21 · \$18.00'), findsOneWidget);
+    expect(find.text('Best seller: Khmer iced coffee ×9'), findsOneWidget);
+    expect(find.text('Up: Mekong Coffee Shop +25%'), findsOneWidget);
     await _shot(t, 'bubble');
-    // the summary goes by itself, once a day
-    await t.pump(const Duration(seconds: 16));
+    // the report goes by itself, once a week
+    await t.pump(const Duration(seconds: 21));
     expect(find.byKey(const ValueKey('bizi-note')), findsNothing);
 
     // drag it up-left; it stays there after a rebuild
@@ -239,7 +369,7 @@ void main() {
   for (final (lang, dark) in [('en', false), ('km', false), ('en', true)]) {
     testWidgets('search: Bizi says, a how-to, sections, results ($lang${dark ? ' dark' : ''})', (t) async {
       await phone(t);
-      SharedPreferences.setMockInitialValues({'bizi_brief_day': khDay()});
+      SharedPreferences.setMockInitialValues({'bizi_brief_day': khDay(), 'bizi_week_seen': '2026-10-19'});
       await PrefsNotifier.init();
       final api = _Api();
       await t.pumpWidget(_app(api, lang: lang, dark: dark));
@@ -252,6 +382,50 @@ void main() {
       expect(find.text(lang == 'km' ? 'ទំនិញ 2 អស់ស្តុក' : '2 products sold out'), findsOneWidget);
       expect(find.byKey(const ValueKey('bizi-ask-0')), findsOneWidget);
       await _shot(t, 'empty-$tag');
+      if (lang == 'en' && !dark) {
+        // a tip: its how-to, Open goes to that business's section, Not now hides it
+        expect(find.text('Orders only show here — connect your staff Telegram group'), findsOneWidget);
+        await t.ensureVisible(find.byKey(const ValueKey('bizi-row-tips-tip:rest_no_tables:b2')));
+        await t.pump();
+        await t.tap(find.byKey(const ValueKey('bizi-row-tips-tip:rest_no_tables:b2')));
+        await _settle(t);
+        expect(find.byKey(const ValueKey('bizi-help')), findsOneWidget);
+        expect(find.text('Open Tables'), findsOneWidget);
+        await _shot(t, 'tip');
+        await t.ensureVisible(find.byKey(const ValueKey('bizi-later')));
+        await t.pump();
+        await t.tap(find.byKey(const ValueKey('bizi-later')));
+        await _settle(t);
+        expect(api.calls.any((c) => c.contains('POST /api/user/bizi/snooze') && c.contains('rest_no_tables')), isTrue);
+        expect(find.text('Add your tables (and print table QRs)'), findsNothing);
+        await t.pump(const Duration(seconds: 4)); // the toast goes
+        // last week, opened
+        await t.ensureVisible(find.byKey(const ValueKey('bizi-row-week-week')));
+        await t.pump();
+        await t.tap(find.byKey(const ValueKey('bizi-row-week-week')));
+        await _settle(t);
+        expect(find.byKey(const ValueKey('bizi-week')), findsOneWidget);
+        expect(find.text('Best sellers: Khmer iced coffee ×9 · Croissant ×4'), findsOneWidget);
+        await _shot(t, 'week');
+        await t.ensureVisible(find.byKey(const ValueKey('bizi-row-week-week')));
+        await t.pump();
+        await t.tap(find.byKey(const ValueKey('bizi-row-week-week')));
+        await _settle(t);
+        // settings: mute sold out → saved on the server, the alert goes
+        await t.tap(find.byKey(const ValueKey('bizi-gear')));
+        await _settle(t);
+        expect(find.byKey(const ValueKey('bizi-settings')), findsOneWidget);
+        await _shot(t, 'settings');
+        await t.ensureVisible(find.byKey(const ValueKey('bizi-mute-sold_out')));
+        await t.pump();
+        await t.tap(find.byKey(const ValueKey('bizi-mute-sold_out')));
+        await _settle(t);
+        expect(api.calls.any((c) => c.startsWith('PUT /api/user/bizi/prefs') && c.contains('sold_out')), isTrue);
+        expect(find.text('Saved'), findsOneWidget);
+        await t.tap(find.text('Back'));
+        await _settle(t);
+        expect(find.byKey(const ValueKey('bizi-input')), findsOneWidget);
+      }
 
       // a question opens its answer by itself
       await t.enterText(find.byKey(const ValueKey('bizi-input')), lang == 'km' ? 'ធ្វើម៉េចភ្ជាប់ POS' : 'how do I pair a POS?');
@@ -300,7 +474,7 @@ void main() {
       // nothing found for a question → the BizHub team
       await t.tap(find.byKey(const ValueKey('bizi-bubble')));
       await _settle(t);
-      expect(find.text('Delivery'), findsOneWidget); // recent
+      expect(find.text('Delivery', skipOffstage: false), findsOneWidget); // recent
       await t.enterText(find.byKey(const ValueKey('bizi-input')), 'how do I fly to the moon?');
       await _settle(t);
       expect(find.byKey(const ValueKey('bizi-none')), findsOneWidget);

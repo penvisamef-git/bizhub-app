@@ -21,10 +21,19 @@ final biziBriefProvider = StateProvider<Json?>((_) => null);
 
 const _posKey = 'bizi_pos'; // {x, y} as parts of the screen (0–1)
 const _dayKey = 'bizi_brief_day'; // the Cambodia day the summary was shown
+const _weekKey = 'bizi_week_seen'; // the Monday of the last weekly report shown
 const size = 60.0;
 const _edge = 8.0;
 
 String khDay([DateTime? now]) => (now ?? DateTime.now()).toUtc().add(const Duration(hours: 7)).toIso8601String().substring(0, 10);
+// "Wed 22" from "2026-10-22" (the day names come from the web's Bizi words)
+String weekDay(String day, String lang) {
+  final d = DateTime.tryParse('${day}T00:00:00Z');
+  if (d == null) return day;
+  final names = biziList(lang, 'days');
+  return '${names.length == 7 ? names[d.weekday - 1] : ''} ${d.day}'.trim();
+}
+
 int _khHour() => DateTime.now().toUtc().add(const Duration(hours: 7)).hour;
 String biziMoney(Object? v, String cur) {
   final n = v is num ? v : num.tryParse('$v') ?? 0;
@@ -97,6 +106,31 @@ class _BiziBubbleState extends ConsumerState<BiziBubble> with WidgetsBindingObse
     if (before != null && p > before) {
       setState(() => _happy = true);
       _show([biziT(lang, 'newSale')], seconds: 6, happy: true);
+      return;
+    }
+    // the first look in a new week: last week's report (instead of that day's summary)
+    final wk = b['weekly'] is Map ? obj(b['weekly']) : null;
+    if (wk != null && str(wk['week']).isNotEmpty && prefStr(_weekKey) != str(wk['week'])) {
+      final pct = wk['change_pct'];
+      final best = wk['best_day'] is Map ? obj(wk['best_day']) : null;
+      final top = objs(wk['top']);
+      final down = objs(wk['down']);
+      final up = objs(wk['up']);
+      String sign(Object? n) => n is num ? '${n > 0 ? '+' : ''}$n%' : '';
+      final cur = str(wk['currency']).isEmpty ? 'USD' : str(wk['currency']);
+      final lines = [
+        biziT(lang, 'weekHead'),
+        biziMoney(wk['total'], cur) + (pct is num ? ' · ${biziT(lang, 'weekChange', {'pct': sign(pct)})}' : ''),
+        if (best != null) biziT(lang, 'weekBest', {'day': weekDay(str(best['day']), lang), 'money': biziMoney(best['sales'], cur)}),
+        if (top.isNotEmpty) biziT(lang, 'weekTop', {'name': top.first['name'], 'qty': top.first['qty']}),
+        if (down.isNotEmpty)
+          biziT(lang, 'weekDown', {'name': down.first['name'], 'pct': sign(down.first['change_pct'])})
+        else if (up.isNotEmpty)
+          biziT(lang, 'weekUp', {'name': up.first['name'], 'pct': sign(up.first['change_pct'])}),
+      ];
+      prefSetStr(_weekKey, str(wk['week']));
+      prefSetStr(_dayKey, khDay());
+      _show(lines, seconds: 20);
       return;
     }
     if (prefStr(_dayKey) == khDay()) return;
