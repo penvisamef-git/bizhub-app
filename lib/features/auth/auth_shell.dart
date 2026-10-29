@@ -7,6 +7,7 @@ import '../../core/format.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../widgets/ui.dart';
+import '../../widgets/powered_by.dart';
 
 // The log in / sign up frame of the web (homepage/auth/AuthShell.jsx): logo, EN/ខ្មែរ, light/dark, then the form.
 class AuthShell extends ConsumerWidget {
@@ -72,7 +73,13 @@ class AuthShell extends ConsumerWidget {
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 440),
                     child: AutofillGroup(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          ...children,
+                          PoweredBy(padding: const EdgeInsets.only(top: 26), color: c.pubMuted),
+                        ],
+                      ),
                     ),
                   ),
                 ),

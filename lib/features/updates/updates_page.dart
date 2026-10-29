@@ -6,6 +6,7 @@ import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../common/shell.dart';
 import 'changelog.dart';
+import '../../widgets/powered_by.dart';
 
 // System activity / សកម្មភាពក្នុងប្រព័ន្ធ: what changed in each version (web: dashboard/client/updates/UpdatesPage.jsx)
 const _text = {
@@ -62,6 +63,7 @@ class UpdatesPage extends ConsumerWidget {
         Text(updatesText(lang, 'sub'), style: TextStyle(color: context.c.muted, height: 1.45)),
         const SizedBox(height: 16),
         for (var i = 0; i < changelog.length; i++) _Version(r: changelog[i], first: i == 0, lang: lang),
+        const Center(child: PoweredBy(padding: EdgeInsets.only(top: 18, bottom: 12))),
       ],
     );
   }

@@ -12,6 +12,7 @@ import '../common/settings_parts.dart';
 import '../common/shell.dart';
 import '../updates/changelog.dart' show bizhubVersion;
 import '../updates/updates_page.dart' show updatesText;
+import '../../widgets/powered_by.dart';
 
 // "More" of the owner bottom bar (the web's more sheet)
 class OwnerMorePage extends ConsumerWidget {
@@ -75,6 +76,7 @@ class OwnerMorePage extends ConsumerWidget {
         ),
         const SizedBox(height: 18),
         Center(child: Muted(t('app.version', {'v': AppInfo.full}))),
+        const Center(child: PoweredBy(padding: EdgeInsets.only(top: 6, bottom: 8))),
       ],
     );
   }

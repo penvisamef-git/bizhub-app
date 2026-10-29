@@ -13,6 +13,7 @@ import '../common/shell.dart';
 import '../updates/changelog.dart' show bizhubVersion;
 import '../updates/updates_page.dart' show updatesText;
 import 'admin_parts.dart';
+import '../../widgets/powered_by.dart';
 
 // "More" of the super admin bottom bar — the rest of SUPER_NAV + the BizHub team pages
 class AdminMorePage extends ConsumerWidget {
@@ -88,6 +89,7 @@ class AdminMorePage extends ConsumerWidget {
         ),
         const SizedBox(height: 18),
         Center(child: Muted(t('app.version', {'v': AppInfo.full}))),
+        const Center(child: PoweredBy(padding: EdgeInsets.only(top: 6, bottom: 8))),
       ],
     );
   }
