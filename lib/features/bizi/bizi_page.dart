@@ -34,7 +34,27 @@ import 'bizi_voice.dart';
 
 const _groups = ['smart', 'pages', 'help', 'businesses', 'products', 'orders', 'people', 'other'];
 const _groupsAsked = ['help', 'smart', 'pages', 'businesses', 'products', 'orders', 'people', 'other'];
+const _adminGroups = ['smart', 'pages', 'help', 'people', 'businesses', 'orders', 'other'];
+const _adminGroupsAsked = ['help', 'smart', 'pages', 'people', 'businesses', 'orders', 'other'];
 const _recentKey = 'bizi_recent';
+
+// the BizHub team: web addresses (alerts, results) → the admin app's screens
+String adminRoute(String href) {
+  final u = Uri.parse(href);
+  final open = u.queryParameters['open'] ?? '';
+  final t = u.queryParameters['t'] ?? '';
+  return switch (u.path) {
+    '/app/super-admin/customers' when open.isNotEmpty => '/a/customer/$open',
+    '/app/super-admin/customers' => '/a/customers',
+    '/app/super-admin/businesses' => '/a/businesses',
+    '/app/super-admin/coin-orders' => '/a/orders',
+    '/app/super-admin/inbox' when t.isNotEmpty => '/a/inbox/$t',
+    '/app/super-admin/inbox' => '/a/inbox',
+    '/app/super-admin/coins' => u.queryParameters['tab'] == 'cards' ? '/a/cards' : '/a/coins',
+    '/app/super-admin/licenses' => '/a/licenses',
+    _ => '/a/dash',
+  };
+}
 
 // web addresses (alerts, results) → the app's own screens
 String appRoute(String href) {
@@ -106,6 +126,9 @@ class _Row {
 }
 
 const _kindIcon = <String, IconData>{
+  'coin_order': LucideIcons.coins,
+  'chat': LucideIcons.messageCircle,
+  'app_error': LucideIcons.bug,
   'alert': LucideIcons.bellRing,
   'help': LucideIcons.lifeBuoy,
   'tip': LucideIcons.wrench,
@@ -127,7 +150,8 @@ const _kindIcon = <String, IconData>{
 
 class BiziPage extends ConsumerStatefulWidget {
   static Future<void> Function(Uri url)? openUrl; // tests: no real Telegram (null = the phone opens it)
-  const BiziPage({super.key});
+  final bool admin; // the BizHub team's Bizi (super admin): its own search, alerts, screens, how-tos
+  const BiziPage({super.key, this.admin = false});
   @override
   ConsumerState<BiziPage> createState() => _BiziPageState();
 }
@@ -216,7 +240,7 @@ class _BiziPageState extends ConsumerState<BiziPage> {
   // ask for the brief again (after settings change / a tip is put off)
   Future<void> _reloadBrief() async {
     try {
-      final b = obj((await ref.read(apiProvider).get('${Api.user}/bizi/brief'))['data']);
+      final b = obj((await ref.read(apiProvider).get('${widget.admin ? Api.admin : Api.user}/bizi/brief'))['data']);
       if (mounted) ref.read(biziBriefProvider.notifier).state = b;
     } catch (_) {}
   }
@@ -247,6 +271,7 @@ class _BiziPageState extends ConsumerState<BiziPage> {
   }
 
   String get _term => _q.text.trim();
+  String _route(String href) => widget.admin ? adminRoute(href) : appRoute(href);
 
   // ask the server a moment after the typing stops; an older answer never replaces a newer one
   void _changed() {
@@ -273,14 +298,14 @@ class _BiziPageState extends ConsumerState<BiziPage> {
       });
       try {
         // "#12 paid" looks for "#12" (the words that say what to do are not searched)
-        final d = obj((await ref.read(apiProvider).get('${Api.user}/search', {'q': verbOf(term)?.rest ?? term}))['data']);
+        final d = obj((await ref.read(apiProvider).get(widget.admin ? '${Api.admin}/bizi/search' : '${Api.user}/search', {'q': verbOf(term)?.rest ?? term}))['data']);
         if (!mounted || n != _ask) return;
         setState(() {
           _offline = false;
           _apiQ = term;
           _smart = (d['smart'] as List? ?? const []).map((e) => '$e').toList();
           _fuzzy = d['fuzzy'] == true;
-          _api = objs(d['results']).where((r) => r['group'] != 'businesses').toList();
+          _api = objs(d['results']).where((r) => widget.admin || r['group'] != 'businesses').toList();
         });
       } catch (_) {
         if (mounted && n == _ask) setState(() => _offline = true);
@@ -291,6 +316,7 @@ class _BiziPageState extends ConsumerState<BiziPage> {
   }
 
   List<Json> _businesses() {
+    if (widget.admin) return const []; // the BizHub team has no businesses of its own
     final own = objs(ref.watch(dashboardProvider).valueOrNull?['businesses']);
     final shared = objs(obj(ref.watch(sharedProvider).valueOrNull)['businesses']).where((b) => b['team_on'] == true).map((b) => {...b, 'shared': true});
     return [...own, ...shared];
@@ -343,7 +369,8 @@ class _BiziPageState extends ConsumerState<BiziPage> {
     if (business != null) {
       openBusiness(nav.routerDelegate.navigatorKey.currentContext ?? context, id: str(business['_id']), name: str(business['name']), category: str(business['category']), tab: tab);
     } else if (route.isNotEmpty) {
-      if (route.startsWith('/o/home') || route.startsWith('/o/business') || route.startsWith('/o/wallet') || route.startsWith('/o/more')) {
+      const tabs = ['/o/home', '/o/business', '/o/wallet', '/o/more', '/a/dash', '/a/customers', '/a/businesses', '/a/coins', '/a/more'];
+      if (tabs.any((t) => route == t || route.startsWith('$t?'))) {
         nav.go(route);
       } else {
         nav.push(route);
@@ -384,7 +411,8 @@ class _BiziPageState extends ConsumerState<BiziPage> {
       for (final a in objs(brief?['alerts'])) {
         final n = a['n'] is num ? a['n'] as num : 0;
         final key = str(a['key']);
-        final title = (n == 1 && biziHas(lang, 'alerts1.$key') ? x('alerts1.$key') : x('alerts.$key')).replaceAll('{n}', '$n');
+        final set = widget.admin ? 'adminAlerts' : 'alerts';
+        final title = (n == 1 && biziHas(lang, '${set}1.$key') ? x('${set}1.$key') : x('$set.$key')).replaceAll('{n}', '$n');
         final b = list.where((y) => str(y['_id']) == str(a['business_id'])).firstOrNull;
         rows.add(
           _Row(
@@ -396,7 +424,7 @@ class _BiziPageState extends ConsumerState<BiziPage> {
             level: str(a['level']),
             business: b ?? (str(a['business_id']).isEmpty ? null : {'_id': a['business_id'], 'name': a['business'], 'category': a['category']}),
             tab: str(a['tab']),
-            route: str(a['href']).isNotEmpty ? appRoute(str(a['href'])) : (str(a['business_id']).isEmpty ? '/o/home' : ''),
+            route: str(a['href']).isNotEmpty ? _route(str(a['href'])) : (str(a['business_id']).isEmpty ? (widget.admin ? '/a/dash' : '/o/home') : ''),
           ),
         );
       }
@@ -446,6 +474,9 @@ class _BiziPageState extends ConsumerState<BiziPage> {
       rows.addAll(list.take(8).map(asBiz));
     } else {
       final all = <_Row>[];
+      for (final (route, en, km) in widget.admin ? findAdminPages(term) : const <(String, String, String)>[]) {
+        all.add(_Row(group: 'pages', kind: 'app', id: 'admin:$route', title: lang == 'km' ? km : en, sub: lang == 'km' ? en : km, route: route, icon: LucideIcons.layoutGrid));
+      }
       for (final p in findPages(list, term, typeName)) {
         all.add(
           _Row(
@@ -473,7 +504,7 @@ class _BiziPageState extends ConsumerState<BiziPage> {
       for (final (title, more, icon, run) in acts) {
         if (ws.every((w) => hit(w, '$title $more'.toLowerCase()) > 0)) all.add(_Row(group: 'pages', kind: 'action', id: title, title: title, sub: x('action'), icon: icon, run: run));
       }
-      for (final h in findHelp(term)) {
+      for (final h in findHelp(term, list: widget.admin ? adminHelpList : null)) {
         all.add(_Row(group: 'help', kind: 'help', id: h.id, title: h.q(lang), sub: x('helpSub'), help: h, icon: LucideIcons.lifeBuoy));
       }
       for (final b in list.where((b) => ws.every((w) => hit(w, '${b['name']} ${typeName(str(b['category']), 'en')} ${typeName(str(b['category']), 'km')}'.toLowerCase()) > 0)).take(6)) {
@@ -488,9 +519,9 @@ class _BiziPageState extends ConsumerState<BiziPage> {
               kind: str(it['kind']),
               id: str(it['id']),
               title: str(it['title']),
-              sub: [str(it['business']), str(it['sub'])].where((s) => s.isNotEmpty).join(' · '),
+              sub: [str(it['business']), str(it['sub']), if (widget.admin && it['kind'] == 'business') typeName(str(it['category']), lang)].where((s) => s.isNotEmpty).join(' · '),
               business: str(it['href']).isNotEmpty ? null : b,
-              route: str(it['href']).isNotEmpty ? appRoute(str(it['href'])) : '',
+              route: str(it['href']).isNotEmpty ? _route(str(it['href'])) : '',
               tab: str(it['tab']),
               status: str(it['status']),
               flag: str(it['flag']),
@@ -500,7 +531,7 @@ class _BiziPageState extends ConsumerState<BiziPage> {
           );
         }
       }
-      for (final g in asked ? _groupsAsked : _groups) {
+      for (final g in widget.admin ? (asked ? _adminGroupsAsked : _adminGroups) : (asked ? _groupsAsked : _groups)) {
         rows.addAll(all.where((r) => r.group == g));
       }
     }
@@ -523,7 +554,7 @@ class _BiziPageState extends ConsumerState<BiziPage> {
       'week' => x('weekHead'),
       'recent' => x('recent'),
       'businesses' when term.isEmpty => x('quick'),
-      _ => x('groups.$g'),
+      _ => widget.admin && biziHas(lang, 'adminGroups.$g') ? x('adminGroups.$g') : x('groups.$g'),
     };
 
     final children = <Widget>[];
@@ -533,24 +564,26 @@ class _BiziPageState extends ConsumerState<BiziPage> {
       start.add(
         Padding(
           padding: const EdgeInsets.fromLTRB(4, 14, 4, 10),
-          child: Text(x('start'), style: TextStyle(color: c.muted, fontSize: 14, height: 1.45)),
+          child: Text(x(widget.admin ? 'adminStart' : 'start'), style: TextStyle(color: c.muted, fontSize: 14, height: 1.45)),
         ),
       );
-      start.add(_Chips(icon: LucideIcons.sparkles, label: x('try'), items: [for (final (v, l) in suggestions(lang)) (l, () => _q.text = v)]));
+      start.add(_Chips(icon: LucideIcons.sparkles, label: x('try'), items: [for (final (v, l) in widget.admin ? adminSuggestions(lang) : suggestions(lang)) (l, () => _q.text = v)]));
       start.add(
         _Chips(
           icon: LucideIcons.lifeBuoy,
           label: x('questions'),
           keyPrefix: 'bizi-ask',
-          items: [for (final a in helpList.where((a) => a['popular'] == true).take(4)) (HelpHit(a, 0).q(lang), () => _q.text = HelpHit(a, 0).q(lang))],
+          items: [for (final a in (widget.admin ? adminHelpList : helpList).where((a) => a['popular'] == true).take(4)) (HelpHit(a, 0).q(lang), () => _q.text = HelpHit(a, 0).q(lang))],
         ),
       );
-      start.add(
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
-          child: Text(x('actHint'), style: TextStyle(color: c.muted, fontSize: 12.5)),
-        ),
-      );
+      if (!widget.admin) {
+        start.add(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
+            child: Text(x('actHint'), style: TextStyle(color: c.muted, fontSize: 12.5)),
+          ),
+        );
+      }
     }
     if (term.isNotEmpty && !waiting && _fuzzy && _apiQ == term) {
       children.add(
@@ -614,6 +647,7 @@ class _BiziPageState extends ConsumerState<BiziPage> {
             list: list,
             to: tp == null ? null : HelpTarget(business: {'_id': tp['business_id'], 'name': tp['business'], 'category': tp['category']}, tab: str(tp['tab'])),
             onLater: tp == null ? null : () => _snooze(tp),
+            team: widget.admin,
             onOpen: (target) => _openTarget(context, business: target.business, tab: target.tab, route: target.route),
           ),
         );
@@ -650,11 +684,11 @@ class _BiziPageState extends ConsumerState<BiziPage> {
               ),
               const SizedBox(height: 4),
               Text(
-                asked ? x('helpNone') : x('emptySub'),
+                asked && !widget.admin ? x('helpNone') : x('emptySub'),
                 textAlign: TextAlign.center,
                 style: TextStyle(color: c.muted, fontSize: 13.5),
               ),
-              if (asked) ...[
+              if (asked && !widget.admin) ...[
                 const SizedBox(height: 10),
                 TextButton.icon(
                   onPressed: () => _openTarget(context, route: '/o/support'),
@@ -720,7 +754,7 @@ class _BiziPageState extends ConsumerState<BiziPage> {
                               decoration: InputDecoration(
                                 isCollapsed: true,
                                 border: InputBorder.none,
-                                hintText: _listening ? x('voiceOn') : x('ph'),
+                                hintText: _listening ? x('voiceOn') : x(widget.admin ? 'adminPh' : 'ph'),
                                 hintStyle: TextStyle(color: c.muted, fontWeight: FontWeight.w500),
                               ),
                             ),
@@ -752,8 +786,10 @@ class _BiziPageState extends ConsumerState<BiziPage> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  RoundBtn(LucideIcons.settings2, key: const ValueKey('bizi-gear'), size: 44, tip: x('settings'), onTap: () => setState(() => _settings = !_settings)),
-                  const SizedBox(width: 8),
+                  if (!widget.admin) ...[
+                    RoundBtn(LucideIcons.settings2, key: const ValueKey('bizi-gear'), size: 44, tip: x('settings'), onTap: () => setState(() => _settings = !_settings)),
+                    const SizedBox(width: 8),
+                  ],
                   RoundBtn(LucideIcons.x, size: 44, tip: x('close'), onTap: () => context.pop()),
                 ],
               ),
@@ -784,7 +820,7 @@ class _BiziPageState extends ConsumerState<BiziPage> {
                   children: children,
                 ),
               ),
-            if (term.isEmpty && !_settings)
+            if (term.isEmpty && !_settings && !widget.admin)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
                 child: Text(
@@ -936,7 +972,8 @@ class _HelpCard extends StatelessWidget {
   final void Function(HelpTarget) onOpen;
   final HelpTarget? to; // a tip: that business, not my first one of the type
   final VoidCallback? onLater; // a tip: "Not now"
-  const _HelpCard({required this.hit, required this.lang, required this.list, required this.onOpen, this.to, this.onLater});
+  final bool team; // the BizHub team: no "chat with the BizHub team"
+  const _HelpCard({required this.hit, required this.lang, required this.list, required this.onOpen, this.to, this.onLater, this.team = false});
   @override
   Widget build(BuildContext context) {
     final c = context.c;
@@ -1004,7 +1041,7 @@ class _HelpCard extends StatelessWidget {
                     style: TextStyle(color: c.brandInk, fontWeight: FontWeight.w700, fontSize: 13),
                   ),
                 )
-              else
+              else if (!team)
                 TextButton.icon(
                   onPressed: () => onOpen(const HelpTarget(route: '/o/support')),
                   icon: Icon(LucideIcons.messageCircle, size: 16, color: c.brandInk),

@@ -152,6 +152,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/o/licenses', builder: (_, _) => const LicensesPage()),
       // Bizi (v3.0.0): search everything + how-tos (the bubble on the owner tabs opens it)
       GoRoute(path: '/o/bizi', builder: (_, _) => const BiziPage()),
+      GoRoute(path: '/a/bizi', builder: (_, _) => const BiziPage(admin: true)),
       // Team access (v1.5): the owner's team of one business · joining from an invite link or code
       GoRoute(
         path: '/o/team/:id',
@@ -165,59 +166,101 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/o/coins', builder: (_, _) => playBilling ? const CoinPlayPage() : const CoinShopPage()),
       GoRoute(
         path: '/biz/restaurant/:id',
-        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: RestaurantPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
+        builder: (_, s) => TeamFrame(
+          id: s.pathParameters['id']!,
+          child: RestaurantPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        ),
       ),
       GoRoute(
         path: '/biz/mart/:id',
-        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: MartPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
+        builder: (_, s) => TeamFrame(
+          id: s.pathParameters['id']!,
+          child: MartPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        ),
       ),
       GoRoute(
         path: '/biz/guesthouse/:id',
-        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: GuestHousePage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
+        builder: (_, s) => TeamFrame(
+          id: s.pathParameters['id']!,
+          child: GuestHousePage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        ),
       ),
       GoRoute(
         path: '/biz/attendance/:id',
-        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: AttendancePage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
+        builder: (_, s) => TeamFrame(
+          id: s.pathParameters['id']!,
+          child: AttendancePage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        ),
       ),
       GoRoute(
         path: '/biz/menuqr/:id',
-        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: MenuQrPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
+        builder: (_, s) => TeamFrame(
+          id: s.pathParameters['id']!,
+          child: MenuQrPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        ),
       ),
       GoRoute(
         path: '/biz/flipbook/:id',
-        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: FlipBookPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
+        builder: (_, s) => TeamFrame(
+          id: s.pathParameters['id']!,
+          child: FlipBookPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        ),
       ),
       GoRoute(
         path: '/biz/website/:id',
-        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: WebsitePage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
+        builder: (_, s) => TeamFrame(
+          id: s.pathParameters['id']!,
+          child: WebsitePage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        ),
       ),
       GoRoute(
         path: '/biz/qrgen/:id',
-        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: QrGenPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
+        builder: (_, s) => TeamFrame(
+          id: s.pathParameters['id']!,
+          child: QrGenPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        ),
       ),
       GoRoute(
         path: '/biz/debt/:id',
-        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: DebtPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
+        builder: (_, s) => TeamFrame(
+          id: s.pathParameters['id']!,
+          child: DebtPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        ),
       ),
       GoRoute(
         path: '/biz/note/:id',
-        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: NotePage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
+        builder: (_, s) => TeamFrame(
+          id: s.pathParameters['id']!,
+          child: NotePage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        ),
       ),
       GoRoute(
         path: '/biz/event/:id',
-        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: EventPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
+        builder: (_, s) => TeamFrame(
+          id: s.pathParameters['id']!,
+          child: EventPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        ),
       ),
       GoRoute(
         path: '/biz/tgstore/:id',
-        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: TgStorePage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
+        builder: (_, s) => TeamFrame(
+          id: s.pathParameters['id']!,
+          child: TgStorePage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        ),
       ),
       GoRoute(
         path: '/biz/stamp/:id',
-        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: StampPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
+        builder: (_, s) => TeamFrame(
+          id: s.pathParameters['id']!,
+          child: StampPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        ),
       ),
       GoRoute(
         path: '/biz/namecard/:id',
-        builder: (_, s) => TeamFrame(id: s.pathParameters['id']!, child: NameCardPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? '')),
+        builder: (_, s) => TeamFrame(
+          id: s.pathParameters['id']!,
+          child: NameCardPage(id: s.pathParameters['id']!, title: s.uri.queryParameters['name'] ?? '', tab: s.uri.queryParameters['tab'] ?? ''),
+        ),
       ),
       // super admin: Dashboard · Customers · Businesses · Coins · More
       StatefulShellRoute.indexedStack(

@@ -47,7 +47,7 @@ class _Api extends Api {
       });
     }
     if (path.endsWith('/team/shared')) return _ok({'businesses': [], 'invites': []});
-    if (path.endsWith('/bizi/brief')) {
+    if (path.endsWith('/bizi/brief') && path.startsWith('/api/user')) {
       return _ok({
         'summary': {'currency': 'USD', 'today': 12.5, 'yesterday': 0, 'week': 12.5, 'last_week': 0, 'change_pct': null, 'bills_today': 3, 'orders_today': 1},
         'pulse': pulse,
@@ -88,7 +88,47 @@ class _Api extends Api {
       });
     }
     if (path.endsWith('/bizi/prefs')) return _ok(_prefs);
-    if (path.endsWith('/search')) {
+    if (path == '/api/admin/bizi/brief') {
+      return _ok({
+        'summary': {'new_customers': 3, 'new_businesses': 2, 'sold_usd': 15, 'sold_orders': 1, 'waiting': 1},
+        'pulse': 7,
+        'alerts': [
+          {'key': 'coin_orders', 'n': 1, 'level': 'warn', 'href': '/app/super-admin/coin-orders?status=pending'},
+          {'key': 'chats', 'n': 2, 'level': 'warn', 'href': '/app/super-admin/inbox'},
+          {'key': 'app_errors', 'n': 1, 'level': 'info', 'href': '/app/super-admin/dashboard'},
+        ],
+        'mood': 'worried',
+        'tips': [],
+        'weekly': null,
+      });
+    }
+    if (path == '/api/admin/bizi/search') {
+      final q = '${query?['q']}';
+      return _ok({
+        'q': q,
+        'smart': q == 'pending' ? ['pending'] : [],
+        'results': [
+          if (q == 'pending')
+            {
+              'group': 'orders',
+              'kind': 'coin_order',
+              'id': 'c1',
+              'title': '#a1b2c3 · 110 coins',
+              'sub': 'Sokha · ABA-778899',
+              'money': 10,
+              'cur': 'USD',
+              'status': 'pending',
+              'href': '/app/super-admin/coin-orders?status=pending',
+              'smart': true,
+            },
+          if (q == 'sokha') ...[
+            {'group': 'people', 'kind': 'person', 'id': 'p1', 'title': 'Sokha Chan', 'sub': 'sokha@test.com · BH-437835', 'href': '/app/super-admin/customers?open=p1'},
+            {'group': 'businesses', 'kind': 'business', 'id': 'b1', 'title': 'Mekong Coffee Shop', 'sub': 'Sokha Chan', 'category': 'tg_store', 'href': '/app/super-admin/businesses?open=b1'},
+          ],
+        ],
+      });
+    }
+    if (path.endsWith('/search') && path.startsWith('/api/user')) {
       final q = '${query?['q']}';
       if (q.contains('coffee') || q.contains('cofee')) {
         return _ok({
@@ -300,6 +340,46 @@ Widget _app(_Api api, {String lang = 'en', bool dark = false, String start = '/o
   );
 }
 
+class _Boss extends SessionNotifier {
+  @override
+  Session? build() => const Session({'name': 'Black', 'email': 'boss@bizhub.test', 'access_token': 't', 'account_type': 'team', 'is_super_admin': true});
+}
+
+Widget _adminApp(_Api api, {String lang = 'en'}) {
+  final router = GoRouter(
+    initialLocation: '/a/dash',
+    routes: [
+      StatefulShellRoute.indexedStack(
+        builder: (_, _, nav) => AppShell(nav: nav, admin: true),
+        branches: [
+          for (final p in ['/a/dash', '/a/customers', '/a/businesses', '/a/coins', '/a/more'])
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: p,
+                  builder: (_, _) => Center(child: Text('TAB $p')),
+                ),
+              ],
+            ),
+        ],
+      ),
+      GoRoute(path: '/a/bizi', builder: (_, _) => const BiziPage(admin: true)),
+      GoRoute(path: '/a/orders', builder: (_, _) => _stub('ORDERS')),
+      GoRoute(path: '/a/prices', builder: (_, _) => _stub('PRICES')),
+      GoRoute(path: '/a/inbox', builder: (_, _) => _stub('INBOX')),
+      GoRoute(path: '/a/customer/:id', builder: (_, s) => _stub('CUSTOMER ${s.pathParameters['id']}')),
+    ],
+  );
+  return ProviderScope(
+    overrides: [apiProvider.overrideWithValue(api), tProvider.overrideWithValue(T.of(lang)), sessionProvider.overrideWith(_Boss.new)],
+    child: MaterialApp.router(
+      debugShowCheckedModeBanner: false,
+      theme: buildTheme(dark: false, khmer: lang == 'km'),
+      routerConfig: router,
+    ),
+  );
+}
+
 Future<void> _settle(WidgetTester t) async {
   for (var i = 0; i < 8; i++) {
     await t.pump(const Duration(milliseconds: 120));
@@ -424,6 +504,58 @@ void main() {
     await t.tap(find.byKey(const ValueKey('bizi-bubble')));
     await _settle(t);
     expect(find.byKey(const ValueKey('bizi-input')), findsOneWidget);
+  });
+
+  testWidgets('the BizHub team: its own Bizi (alerts, smart words, screens, how-tos)', (t) async {
+    await phone(t);
+    SharedPreferences.setMockInitialValues({'bizi_tip_seen': '1'});
+    await PrefsNotifier.init();
+    final api = _Api();
+    await t.pumpWidget(_adminApp(api));
+    await _settle(t);
+    expect(api.calls.any((c) => c.startsWith('GET /api/admin/bizi/brief')), isTrue);
+    expect(find.descendant(of: find.byKey(const ValueKey('bizi-dot')), matching: find.text('2')), findsOneWidget);
+    expect(find.text('Today: 3 new customers · 2 new businesses'), findsOneWidget);
+    expect(find.text('Coins sold today: \$15.00'), findsOneWidget);
+    await t.pump(const Duration(seconds: 16));
+    await t.tap(find.byKey(const ValueKey('bizi-bubble')));
+    await _settle(t);
+    expect(find.text('1 coin order to check'), findsOneWidget);
+    expect(find.text('2 customers waiting for an answer'), findsOneWidget);
+    expect(find.text('Coin orders to check'), findsOneWidget); // the chip
+    expect(find.byKey(const ValueKey('bizi-gear')), findsNothing); // owners' settings only
+    await _shot(t, 'admin-empty');
+    await t.enterText(find.byKey(const ValueKey('bizi-input')), 'pending');
+    await _settle(t);
+    expect(find.text('#a1b2c3 · 110 coins'), findsOneWidget);
+    expect(find.textContaining('SMART · '), findsOneWidget);
+    await t.tap(find.text('#a1b2c3 · 110 coins'));
+    await _settle(t);
+    expect(find.text('ORDERS'), findsOneWidget);
+    t.state<NavigatorState>(find.byType(Navigator).first).pop();
+    await _settle(t);
+    await t.tap(find.byKey(const ValueKey('bizi-bubble')));
+    await _settle(t);
+    await t.enterText(find.byKey(const ValueKey('bizi-input')), 'sokha');
+    await _settle(t);
+    expect(find.text('Sokha Chan'), findsOneWidget);
+    expect(find.textContaining('Telegram Store'), findsWidgets); // the business type
+    await _shot(t, 'admin-search');
+    await t.tap(find.text('Sokha Chan'));
+    await _settle(t);
+    expect(find.text('CUSTOMER p1'), findsOneWidget);
+    t.state<NavigatorState>(find.byType(Navigator).first).pop();
+    await _settle(t);
+    await t.tap(find.byKey(const ValueKey('bizi-bubble')));
+    await _settle(t);
+    await t.enterText(find.byKey(const ValueKey('bizi-input')), 'how do I approve a coin order?');
+    await _settle(t);
+    expect(find.byKey(const ValueKey('bizi-help')), findsOneWidget);
+    expect(find.textContaining('Chat with the BizHub team'), findsNothing);
+    await _shot(t, 'admin-help');
+    await t.tap(find.byKey(const ValueKey('bizi-help-go')));
+    await _settle(t);
+    expect(find.text('ORDERS'), findsOneWidget);
   });
 
   for (final (lang, dark) in [('en', false), ('km', false), ('en', true)]) {

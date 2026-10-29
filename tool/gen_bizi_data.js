@@ -79,7 +79,36 @@ for (const a of help) {
   }
 }
 
-const data = { text, help, words, suggest, pages };
+// the BizHub team's Bizi (super admin): its pages, how-tos, chips — web pages → the admin app's screens
+const adminSrc = read("dashboard/bizi/admin-help.js");
+const ADMIN_ROUTE = (href) => {
+  const [p, q = ""] = href.split("?");
+  const map = {
+    "/app/super-admin/dashboard": "/a/dash",
+    "/app/super-admin/coin-orders": "/a/orders",
+    "/app/super-admin/inbox": "/a/inbox",
+    "/app/super-admin/customers": "/a/customers",
+    "/app/super-admin/businesses": "/a/businesses",
+    "/app/super-admin/coins": q.includes("tab=cards") ? "/a/cards" : "/a/coins",
+    "/app/super-admin/licenses": "/a/licenses",
+    "/app/super-admin/prices": "/a/prices",
+    "/app/super-admin/holidays": "/a/holidays",
+    "/app/super-admin/website": "/a/homepage",
+    "/app/admin/users": "/a/users",
+    "/app/admin/activity-log": "/a/activity",
+  };
+  if (!map[p]) throw new Error(`admin: no app screen for ${href}`);
+  return map[p];
+};
+const admin = {
+  pages: literalAfter(adminSrc, "export const ADMIN_PAGES =").map(([href, en, km, more]) => [ADMIN_ROUTE(href), en, km, more]),
+  help: literalAfter(adminSrc, "export const ADMIN_HELP =").map((a) => ({ ...a, href: ADMIN_ROUTE(a.href) })),
+  suggest: literalAfter(adminSrc, "export const ADMIN_SUGGEST ="),
+};
+// two web pages that are one screen in the app
+admin.pages = admin.pages.filter((p, i, all) => all.findIndex((x) => x[0] === p[0]) === i || p[0] === "/a/cards");
+
+const data = { text, help, words, suggest, pages, admin };
 // JSON is a Dart literal once "$" can't start an interpolation
 const lit = JSON.stringify(data, null, 1).replace(/\$/g, "\\$");
 fs.mkdirSync(path.dirname(OUT), { recursive: true });

@@ -78,6 +78,8 @@ class HelpHit {
 }
 
 List<Map> get helpList => (biziData['help'] as List).cast<Map>();
+// the BizHub team's how-tos (super admin)
+List<Map> get adminHelpList => ((biziData['admin'] as Map)['help'] as List).cast<Map>();
 
 const _stop = {
   'how', 'do', 'does', 'did', 'i', 'we', 'you', 'to', 'a', 'an', 'the', 'my', 'our', 'can', 'could', 'should', 'where', 'what', 'which', 'when', 'why', 'is', 'are', 'am', 'it', 'its', 'in', 'on', //
@@ -96,7 +98,7 @@ String _textOf(Map a) => '${(a['en'] as Map)['q']} ${(a['km'] as Map)['q']} ${a[
 List<String> _kmWords(Map a) => '${(a['km'] as Map)['q']} ${a['words']}'.split(RegExp(r'[\s·,/()?]+')).where((w) => _isKm(w) && w.length >= 2 && !_kmAsk.contains(w)).toList();
 
 // the how-tos for the words, best first
-List<HelpHit> findHelp(String raw, {int max = 3}) {
+List<HelpHit> findHelp(String raw, {int max = 3, List<Map>? list}) {
   final q = raw.toLowerCase().trim();
   if (q.length < 2) return const [];
   var rest = q;
@@ -106,7 +108,7 @@ List<HelpHit> findHelp(String raw, {int max = 3}) {
   final ws = rest.replaceAll(RegExp('[?!.,:;"“”\']'), ' ').split(RegExp(r'\s+')).where((w) => w.isNotEmpty && !_stop.contains(w)).toList();
   final asked = isQuestion(q);
   final out = <HelpHit>[];
-  for (final a in helpList) {
+  for (final a in list ?? helpList) {
     final text = _textOf(a);
     final km = _kmWords(a);
     var score = 0;
@@ -203,6 +205,33 @@ List<PageHit> findPages(List<Biz> list, String q, String Function(String type, S
   out.sort((x, y) => y.score.compareTo(x.score));
   return out.take(8).toList();
 }
+
+// the BizHub team's screens whose name (or more words) has the words: (route, English, Khmer)
+List<(String, String, String)> findAdminPages(String q) {
+  final ws = words(q);
+  if (ws.isEmpty) return const [];
+  final out = <((String, String, String), int)>[];
+  for (final p in ((biziData['admin'] as Map)['pages'] as List)) {
+    final label = '${p[1]} ${p[2]}'.toLowerCase();
+    final more = '${p[3]}'.toLowerCase();
+    var score = 0;
+    for (final w in ws) {
+      final a = hit(w, label);
+      final m = a > 0 ? 0 : hit(w, more);
+      if (a == 0 && m == 0) {
+        score = -1;
+        break;
+      }
+      score += a > 0 ? 5 : 2;
+    }
+    if (score > 0) out.add((('${p[0]}', '${p[1]}', '${p[2]}'), score));
+  }
+  out.sort((a, b) => b.$2.compareTo(a.$2));
+  return out.take(6).map((e) => e.$1).toList();
+}
+
+List<(String, String)> adminSuggestions(String lang) =>
+    ((((biziData['admin'] as Map)['suggest'] as Map)[lang] ?? ((biziData['admin'] as Map)['suggest'] as Map)['en']) as List).map((e) => ('${e[0]}', '${e[1]}')).toList();
 
 // the smart-word chips for the empty box
 List<(String, String)> suggestions(String lang) => (((biziData['suggest'] as Map)[lang] ?? (biziData['suggest'] as Map)['en']) as List).map((e) => ('${e[0]}', '${e[1]}')).toList();

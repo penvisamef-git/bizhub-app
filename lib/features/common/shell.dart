@@ -58,12 +58,16 @@ class AppShell extends ConsumerWidget {
         onTap: (i) => nav.goBranch(i, initialLocation: i == nav.currentIndex),
       ),
     );
-    if (admin) return page;
-    // Bizi (v3.0.0) floats over the owner's tabs — tap to search, hold and drag to move it
+    // Bizi (v3.0.0) floats over the tabs — tap to search, hold and drag to move it (the BizHub team has its own)
     return Stack(
       children: [
         page,
-        const Positioned.fill(child: Material(type: MaterialType.transparency, child: BiziBubble())),
+        Positioned.fill(
+          child: Material(
+            type: MaterialType.transparency,
+            child: BiziBubble(admin: admin),
+          ),
+        ),
       ],
     );
   }

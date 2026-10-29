@@ -45,7 +45,8 @@ String biziMoney(Object? v, String cur) {
 }
 
 class BiziBubble extends ConsumerStatefulWidget {
-  const BiziBubble({super.key});
+  final bool admin; // the BizHub team (super admin): its own brief and screen
+  const BiziBubble({super.key, this.admin = false});
   @override
   ConsumerState<BiziBubble> createState() => _BiziBubbleState();
 }
@@ -89,7 +90,7 @@ class _BiziBubbleState extends ConsumerState<BiziBubble> with WidgetsBindingObse
   Future<void> _load() async {
     if (!mounted || WidgetsBinding.instance.lifecycleState == AppLifecycleState.paused) return;
     try {
-      final b = obj((await ref.read(apiProvider).get('${Api.user}/bizi/brief'))['data']);
+      final b = obj((await ref.read(apiProvider).get('${widget.admin ? Api.admin : Api.user}/bizi/brief'))['data']);
       if (!mounted) return;
       ref.read(biziBriefProvider.notifier).state = b;
       _react(b);
@@ -147,6 +148,12 @@ class _BiziBubbleState extends ConsumerState<BiziBubble> with WidgetsBindingObse
             : 'evening'}',
       ),
     ];
+    if (widget.admin) {
+      // the BizHub team: today's new customers / businesses, coins sold
+      lines.add(biziT(lang, 'adminToday', {'c': s['new_customers'] ?? 0, 'b': s['new_businesses'] ?? 0}));
+      final sold = s['sold_usd'] is num ? s['sold_usd'] as num : 0;
+      if (sold > 0) lines.add(biziT(lang, 'adminSold', {'money': biziMoney(sold, 'USD')}));
+    }
     final y = s['yesterday'] is num ? s['yesterday'] as num : 0;
     final td = s['today'] is num ? s['today'] as num : 0;
     if (y > 0) {
@@ -183,7 +190,7 @@ class _BiziBubbleState extends ConsumerState<BiziBubble> with WidgetsBindingObse
   void _open() {
     _noteTimer?.cancel();
     setState(() => _note = null);
-    context.push('/o/bizi');
+    context.push(widget.admin ? '/a/bizi' : '/o/bizi');
   }
 
   // where the bubble's top-left corner is, inside the screen (above the bottom bar by default)
