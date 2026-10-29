@@ -31,6 +31,8 @@ class _Api extends Api {
   final mute = <String>[];
   final snoozed = <String>[];
   bool tgOn = false;
+  String o12 = 'new'; // order #12: its status, and paid or not
+  bool o12Paid = false;
   final tg = <String, dynamic>{'morning': true, 'alerts': true, 'weekly': true};
   Json _ok(Object? data) => {'success': true, 'data': data};
 
@@ -110,6 +112,30 @@ class _Api extends Api {
           ],
         });
       }
+      if (q == '#12') {
+        return _ok({
+          'q': q,
+          'smart': [],
+          'fuzzy': false,
+          'results': [
+            {
+              'group': 'orders',
+              'kind': 'order',
+              'id': 'o1',
+              'business_id': 'b1',
+              'business': 'Mekong Coffee Shop',
+              'category': 'tg_store',
+              'title': '#12',
+              'sub': 'Emma Wilson',
+              'money': 6.5,
+              'cur': 'USD',
+              'tab': 'orders',
+              'status': o12,
+              'flag': o12Paid ? '' : 'unpaid',
+            },
+          ],
+        });
+      }
       if (q.contains('new')) {
         return _ok({
           'q': q,
@@ -167,6 +193,8 @@ class _Api extends Api {
     calls.add('POST $path $body');
     final b = body is Map ? Map<String, dynamic>.from(body) : <String, dynamic>{};
     if (path.endsWith('/bizi/snooze')) snoozed.add('${b['key']}:${b['business_id']}');
+    if (path.endsWith('/tgstore/orders/o1/paid')) o12Paid = true;
+    if (path.endsWith('/tgstore/orders/o1/status')) o12 = '${b['status']}';
     if (path.endsWith('/bizi/telegram/link')) return _ok({'url': 'https://t.me/BizHubTestBot?start=bz_abc'});
     return _ok({'days': 14});
   }
@@ -505,8 +533,39 @@ void main() {
       t.state<NavigatorState>(find.byType(Navigator).first).pop();
       await _settle(t);
 
-      // nothing found for a question → the BizHub team
+      // quick actions: "#12 paid" → asked first → Yes → paid; Accept with its chip
       await t.tap(find.byKey(const ValueKey('bizi-bubble')));
+      await _settle(t);
+      await t.enterText(find.byKey(const ValueKey('bizi-input')), '#12 paid');
+      await _settle(t);
+      expect(api.calls.any((c) => c.contains('/search') && c.contains('q: #12}')), isTrue); // "paid" is not searched
+      expect(find.byKey(const ValueKey('bizi-act-paid')), findsOneWidget);
+      expect(find.byKey(const ValueKey('bizi-act-accept')), findsOneWidget);
+      await t.testTextInput.receiveAction(TextInputAction.search); // Enter
+      await _settle(t);
+      expect(find.text('Mark order #12 paid?'), findsOneWidget);
+      await _shot(t, 'action');
+      await t.tap(find.byKey(const ValueKey('bizi-yes')));
+      await _settle(t);
+      expect(api.calls.any((c) => c.startsWith('POST /api/user/businesses/b1/tgstore/orders/o1/paid')), isTrue);
+      expect(find.text('Order #12 is paid'), findsOneWidget);
+      expect(find.byKey(const ValueKey('bizi-act-paid')), findsNothing); // paid now
+      await t.pump(const Duration(seconds: 4));
+      await t.tap(find.byKey(const ValueKey('bizi-act-accept')));
+      await _settle(t);
+      await t.tap(find.byKey(const ValueKey('bizi-no')));
+      await _settle(t);
+      expect(api.calls.where((c) => c.contains('/orders/o1/status')), isEmpty); // No = nothing done
+      await t.tap(find.byKey(const ValueKey('bizi-act-accept')));
+      await _settle(t);
+      await t.tap(find.byKey(const ValueKey('bizi-yes')));
+      await _settle(t);
+      expect(api.calls.any((c) => c.contains('/orders/o1/status {status: accepted}')), isTrue);
+      expect(find.byKey(const ValueKey('bizi-act-done')), findsOneWidget);
+      await t.pump(const Duration(seconds: 4));
+
+      // nothing found for a question → the BizHub team
+      await t.enterText(find.byKey(const ValueKey('bizi-input')), '');
       await _settle(t);
       expect(find.text('Delivery', skipOffstage: false), findsOneWidget); // recent
       await t.enterText(find.byKey(const ValueKey('bizi-input')), 'how do I fly to the moon?');

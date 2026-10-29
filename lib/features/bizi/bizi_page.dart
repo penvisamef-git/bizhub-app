@@ -18,6 +18,7 @@ import '../common/open_business.dart';
 import '../owner/coin_play.dart' show playBilling;
 import '../owner/data.dart';
 import '../team/team_data.dart';
+import 'bizi_actions.dart';
 import 'bizi_bubble.dart';
 import 'bizi_face.dart';
 import 'bizi_find.dart';
@@ -143,6 +144,40 @@ class _BiziPageState extends ConsumerState<BiziPage> {
   bool _typing = false;
   bool _offline = false;
   bool _settings = false; // the gear: Bizi settings instead of the list
+  ({String row, BiziAction a, String title})? _confirm; // a quick action waiting for Yes / No
+  bool _acting = false;
+
+  List<BiziAction> _actionsOf(_Row r) =>
+      r.business == null ? const [] : actionsOf(category: str(r.business!['category']), kind: r.kind, id: r.id, businessId: str(r.business!['_id']), status: r.status, flag: r.flag);
+  BiziAction? _primaryOf(_Row r) {
+    final v = verbOf(_term);
+    if (v == null) return null;
+    return _actionsOf(r).where((a) => a.key == v.key).firstOrNull;
+  }
+
+  Future<void> _runConfirm() async {
+    final c = _confirm;
+    if (c == null || _acting) return;
+    final lang = ref.read(tProvider).lang;
+    setState(() => _acting = true);
+    final api = ref.read(apiProvider);
+    final path = '${Api.user}${c.a.path}';
+    try {
+      await (c.a.method == 'put' ? api.put(path, c.a.body) : api.post(path, c.a.body));
+      if (!mounted) return;
+      toast(context, biziT(lang, 'actOk.${c.a.key}', {'t': c.title}));
+      setState(() => _confirm = null);
+      _changed(); // the result again, as it is now
+      _reloadBrief();
+    } catch (e) {
+      if (!mounted) return;
+      toast(context, '$e');
+      setState(() => _confirm = null);
+    } finally {
+      if (mounted) setState(() => _acting = false);
+    }
+  }
+
   final Set<String> _hidden = {}; // tips put off ("Not now") while the screen is open
 
   // ask for the brief again (after settings change / a tip is put off)
@@ -203,7 +238,8 @@ class _BiziPageState extends ConsumerState<BiziPage> {
         _busy = true;
       });
       try {
-        final d = obj((await ref.read(apiProvider).get('${Api.user}/search', {'q': term}))['data']);
+        // "#12 paid" looks for "#12" (the words that say what to do are not searched)
+        final d = obj((await ref.read(apiProvider).get('${Api.user}/search', {'q': verbOf(term)?.rest ?? term}))['data']);
         if (!mounted || n != _ask) return;
         setState(() {
           _offline = false;
@@ -246,6 +282,11 @@ class _BiziPageState extends ConsumerState<BiziPage> {
   }
 
   void _go(_Row r) {
+    final primary = _primaryOf(r);
+    if (primary != null) {
+      setState(() => _confirm = (row: '${r.group}:${r.id}', a: primary, title: r.title));
+      return;
+    }
     if (r.help != null || r.week != null) {
       setState(() {
         final open = _currentOpen(isQuestion(_term), r.id);
@@ -470,6 +511,12 @@ class _BiziPageState extends ConsumerState<BiziPage> {
           items: [for (final a in helpList.where((a) => a['popular'] == true).take(4)) (HelpHit(a, 0).q(lang), () => _q.text = HelpHit(a, 0).q(lang))],
         ),
       );
+      start.add(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
+          child: Text(x('actHint'), style: TextStyle(color: c.muted, fontSize: 12.5)),
+        ),
+      );
     }
     if (term.isNotEmpty && !waiting && _fuzzy && _apiQ == term) {
       children.add(
@@ -504,6 +551,25 @@ class _BiziPageState extends ConsumerState<BiziPage> {
       }
       final open = (r.help != null || r.week != null) && openId == r.id;
       children.add(_RowTile(row: r, open: open, lang: lang, statusWord: r.status.isEmpty ? '' : biziT(lang, 'status.${r.status}'), flagWord: r.flag.isEmpty ? '' : x(r.flag), onTap: () => _go(r)));
+      final acts = _actionsOf(r);
+      if (acts.isNotEmpty) {
+        final key = '${r.group}:${r.id}';
+        final asking = _confirm?.row == key ? _confirm : null;
+        final primary = _primaryOf(r)?.key;
+        children.add(
+          _ActsBar(
+            key: ValueKey('bizi-acts-$key'),
+            lang: lang,
+            acts: acts,
+            primary: primary,
+            asking: asking == null ? null : (asking.a, asking.title),
+            busy: _acting,
+            onPick: (a) => setState(() => _confirm = (row: key, a: a, title: r.title)),
+            onYes: _runConfirm,
+            onNo: () => setState(() => _confirm = null),
+          ),
+        );
+      }
       if (open && r.week != null) children.add(_WeekCard(wk: r.week!, lang: lang));
       if (open && r.help != null) {
         final tp = r.tip;
@@ -610,7 +676,11 @@ class _BiziPageState extends ConsumerState<BiziPage> {
                               textInputAction: TextInputAction.search,
                               autocorrect: false,
                               onSubmitted: (_) {
-                                if (rows.isNotEmpty) _go(rows.first);
+                                if (_confirm != null) {
+                                  _runConfirm();
+                                } else if (rows.isNotEmpty) {
+                                  _go(rows.first);
+                                }
                               },
                               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: c.ink),
                               decoration: InputDecoration(
@@ -969,6 +1039,56 @@ class _WeekCard extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+// the quick actions under a result, or the question before doing one ("Mark order #12 paid?  Yes · No")
+class _ActsBar extends StatelessWidget {
+  final String lang;
+  final List<BiziAction> acts;
+  final String? primary;
+  final (BiziAction, String)? asking;
+  final bool busy;
+  final void Function(BiziAction) onPick;
+  final VoidCallback onYes, onNo;
+  const _ActsBar({super.key, required this.lang, required this.acts, required this.primary, required this.asking, required this.busy, required this.onPick, required this.onYes, required this.onNo});
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    Widget chip(String text, VoidCallback? onTap, {bool strong = false, bool solid = false, Key? key}) => Material(
+      color: solid ? c.brand : c.card,
+      shape: StadiumBorder(side: BorderSide(color: strong || solid ? c.brand : c.line)),
+      child: InkWell(
+        key: key,
+        customBorder: const StadiumBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Text(
+            text,
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: solid ? Colors.white : (strong ? c.brandInk : c.ink)),
+          ),
+        ),
+      ),
+    );
+    final a = asking;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: EdgeInsets.fromLTRB(58, a == null ? 0 : 8, 8, a == null ? 4 : 10),
+      decoration: a == null ? null : BoxDecoration(color: c.active, borderRadius: BorderRadius.circular(14)),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: a == null
+            ? [for (final x in acts) chip(biziT(lang, 'act.${x.key}'), () => onPick(x), strong: x.key == primary, key: ValueKey('bizi-act-${x.key}'))]
+            : [
+                Text(biziT(lang, 'actAsk.${a.$1.key}', {'t': a.$2}), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                chip(biziT(lang, 'yes'), busy ? null : onYes, solid: true, key: const ValueKey('bizi-yes')),
+                chip(biziT(lang, 'no'), onNo, key: const ValueKey('bizi-no')),
+              ],
       ),
     );
   }
